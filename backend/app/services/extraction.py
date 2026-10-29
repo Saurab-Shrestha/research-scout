@@ -67,12 +67,15 @@ def _same_university(page_name: str, university: University) -> bool:
 
 
 def _ensure_aliases(db: Session, university: University) -> None:
-    if university.aliases is None and university.openalex_id:
+    """Fill aliases and homepage from OpenAlex once per university."""
+    if (university.aliases is None or university.website_url is None) and university.openalex_id:
         from app.services import openalex  # local import keeps extraction usable without network in tests
         try:
-            university.aliases = openalex.institution_aliases(university.openalex_id)
+            info = openalex.institution_profile(university.openalex_id)
         except openalex.ScholarlyError:
             return  # retry next time; comparison falls back to the display name
+        university.aliases = info["aliases"]
+        university.website_url = university.website_url or info["homepage_url"]
         db.flush()
 
 

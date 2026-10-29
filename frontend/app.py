@@ -203,7 +203,10 @@ def job_progress():
         return
     for job in recent:
         inputs = job["input"]
-        label = ", ".join(AREAS.get(a, a) for a in inputs.get("research_areas", []))
+        if job["job_type"] == "evaluation":
+            label = f"Evaluation of {len(inputs.get('professor_ids') or []) or 'all'} professors"
+        else:
+            label = ", ".join(AREAS.get(a, a) for a in inputs.get("research_areas", []))
         if inputs.get("query"):
             label = f"{label} + “{inputs['query']}”" if label else inputs["query"]
         with st.expander(f"{STATUS_ICON.get(job['status'], '')} {label} · {job['status']}",
@@ -253,9 +256,82 @@ def discover_page():
     job_progress()
 
 
+FUNDING_LABEL = {"confirmed_full": "✅ Confirmed full", "confirmed_partial": "🟡 Confirmed partial",
+                 "advertised_unverified": "⚠️ Advertised, unverified", "potential": "❔ Potential",
+                 "unknown": "❔ Unknown", "unfunded": "❌ Unfunded"}
+DEGREE_LABEL = {"phd": "PhD", "thesis_masters": "Thesis master's", "course_masters": "Course master's"}
+
+
+def opportunity_detail(opp_id: str):
+    d = call("GET", f"/opportunities/{opp_id}")
+    if not d:
+        return
+    st.subheader(f"{d['professor']} · {d['university']}")
+    st.caption(f"{d['program']} · {DEGREE_LABEL.get(d['degree_type'])} · score {d['overall_score']}")
+    links = [f"[Faculty page]({d['faculty_url']})" if d["faculty_url"] else None,
+             f"[Program page]({d['program_url']})" if d["program_url"] else None]
+    st.markdown(" · ".join(filter(None, links)) or "No verified pages")
+    research, funding, elig, evidence = st.tabs(["Research fit", "Funding", "Eligibility", "Evidence"])
+    with research:
+        for m in d["explanation"].get("research_matches", []):
+            st.markdown(f"**{m['interest']}** ↔ _{m['paper']}_ ({m['year']}) · similarity {m['similarity']}")
+    with funding:
+        st.markdown(f"**{FUNDING_LABEL.get(d['funding_status'])}** — {d['funding_explanation']}")
+        if d["stipend"]:
+            st.markdown(f"Stipend: **{d['stipend']}**")
+    with elig:
+        icon = {"ok": "✅", "warn": "⚠️", "unknown": "❔", "fail": "❌"}
+        st.markdown(f"**{d['eligibility_status'].replace('_', ' ')}**")
+        for c in d["explanation"].get("eligibility_checks", []):
+            st.write(f"{icon[c['status']]} **{c['name']}** — {c['detail']}")
+    with evidence:
+        st.dataframe(d["program_evidence"], width="stretch", hide_index=True)
+        for p in d["requirements"].get("pages", []):
+            st.write(f"`{p['result']}` {p['url']}")
+
+
+def opportunities_page():
+    st.title("Opportunities")
+    st.caption("Ranking = 35% research fit + 25% funding + 20% eligibility + 10% availability + 10% timing. "
+               "A prioritisation heuristic, not an admission prediction.")
+    with st.expander("Evaluate professors (finds program pages, funding and deadlines; ~2 minutes per professor and degree)"):
+        professors = call("GET", "/professors", params={"limit": 200}) or []
+        chosen = st.multiselect("Professors (empty = all)", [p["id"] for p in professors],
+                                format_func={p["id"]: f"{p['name']} — {p['university']}" for p in professors}.get)
+        degrees = st.multiselect("Degree types", list(DEGREE_LABEL), default=["phd", "thesis_masters"],
+                                 format_func=DEGREE_LABEL.get)
+        if st.button("Start evaluation") and degrees:
+            if call("POST", "/opportunities/evaluate", json={"professor_ids": chosen or None, "degree_types": degrees}):
+                st.success("Evaluation queued. Progress appears on the Discover page under recent jobs.")
+
+    c1, c2, c3 = st.columns(3)
+    degree = c1.selectbox("Degree", [None, *DEGREE_LABEL], format_func=lambda d: "All" if d is None else DEGREE_LABEL[d])
+    country = c2.selectbox("Country", [None, "US", "CA"], format_func=lambda c: c or "All")
+    show_excluded = c3.checkbox("Show excluded (ineligible / unfunded)")
+    params = {"include_excluded": show_excluded, **({"degree_type": degree} if degree else {}),
+              **({"country": country} if country else {})}
+    opps = call("GET", "/opportunities", params=params) or []
+    if not opps:
+        st.info("No scored opportunities yet. Run an evaluation above.")
+        return
+    st.dataframe(
+        [{"score": o["overall_score"], "professor": o["professor"], "university": o["university"],
+          "degree": DEGREE_LABEL.get(o["degree_type"]), "funding": FUNDING_LABEL.get(o["funding_status"]),
+          "stipend": o["stipend"], "eligibility": o["eligibility_status"].replace("_", " "),
+          "deadline": o["deadline"], "research": o["scores"]["research"], "excluded": o["excluded_reason"]}
+         for o in opps],
+        width="stretch", hide_index=True,
+        column_config={"score": st.column_config.ProgressColumn(min_value=0, max_value=100, format="%.0f"),
+                       "research": st.column_config.ProgressColumn(min_value=0, max_value=100, format="%.0f")},
+    )
+    labels = {o["id"]: f"{o['overall_score']:.0f} · {o['professor']} · {DEGREE_LABEL.get(o['degree_type'])}" for o in opps}
+    opportunity_detail(st.selectbox("Details", list(labels), format_func=labels.get))
+
+
 st.set_page_config(page_title="Research Scout", layout="wide")
 st.navigation([
     st.Page(discover_page, title="Discover", icon=":material/travel_explore:"),
+    st.Page(opportunities_page, title="Opportunities", icon=":material/leaderboard:"),
     st.Page(research_page, title="Research", icon=":material/school:"),
     st.Page(profile_page, title="Profile", icon=":material/person:"),
 ]).run()

@@ -163,6 +163,9 @@ def get_authors(author_ids: list[str]) -> list[dict]:
     return authors
 
 
-def institution_aliases(institution_id: str) -> list[str]:
-    inst = _get(f"/institutions/{institution_id}", {"select": "display_name_acronyms,display_name_alternatives"})
-    return list(dict.fromkeys((inst.get("display_name_acronyms") or []) + (inst.get("display_name_alternatives") or [])))
+def institution_profile(institution_id: str) -> dict:
+    """Acronyms/alternative names and homepage for an institution."""
+    inst = _get(f"/institutions/{institution_id}",
+                {"select": "display_name_acronyms,display_name_alternatives,homepage_url"})
+    names = (inst.get("display_name_acronyms") or []) + (inst.get("display_name_alternatives") or [])
+    return {"aliases": list(dict.fromkeys(names)), "homepage_url": inst.get("homepage_url")}

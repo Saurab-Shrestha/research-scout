@@ -157,12 +157,16 @@ def verify_program(db: Session, professor_id: uuid.UUID, degree_type: str, inten
     if cached:
         return ProgramOutcome(cached.id, "cached")
 
-    text, _ = llm.search_text(SEARCH_PROMPT.format(
+    search = SEARCH_PROMPT.format(
         degree=DEGREE_LABELS[degree_type], university=university.name, professor=professor.name,
         department=department or "unknown", term=intended_term or "the next intake", n=MAX_PAGES,
-    ), settings.extraction_model)
+    )
+    text, _ = llm.search_text(search, settings.extraction_model)
+    if not page_finder.candidate_urls(text):  # grounded replies are occasionally empty
+        text, _ = llm.search_text(search, settings.extraction_model)
 
-    trusted_domains = {_registrable(urlsplit(professor.faculty_url).hostname)} if professor.faculty_url else set()
+    _ensure_aliases(db, university)
+    trusted_domains = {_registrable(urlsplit(u).hostname) for u in (professor.faculty_url, university.website_url) if u}
     accepted, pages = [], []
     for url in page_finder.candidate_urls(text)[:MAX_PAGES]:
         try:
@@ -175,8 +179,6 @@ def verify_program(db: Session, professor_id: uuid.UUID, degree_type: str, inten
             continue
         ex, page = result.parsed, _norm(page_text)
         named = ex.university.value if _is_supported(ex.university, page) else None
-        if named:
-            _ensure_aliases(db, university)
         if named and not _same_university(named, university):
             pages.append({"url": url, "result": f"rejected: page is about {named!r}"})
             continue
