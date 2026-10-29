@@ -221,3 +221,19 @@ class MatchResult(Entity, Base):
     excluded_reason: Mapped[str | None]  # set when filtered out of the ranking
     explanation_json: Mapped[dict] = mapped_column(default=dict)
     scoring_version: Mapped[str]
+
+
+class Application(Entity, Base):
+    """Tracker entry for an opportunity the candidate is pursuing (Planning F5)."""
+    __tablename__ = "applications"
+    __table_args__ = (UniqueConstraint("opportunity_id", "candidate_profile_id"),)
+
+    opportunity_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("opportunities.id"))
+    candidate_profile_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("candidate_profiles.id"))
+    status: Mapped[str] = mapped_column(default="shortlisted", index=True)
+    contacted_at: Mapped[date | None]
+    deadline: Mapped[date | None]
+    next_action: Mapped[str | None]
+    next_action_at: Mapped[date | None]
+    notes: Mapped[str] = mapped_column(Text, default="")
+    history_json: Mapped[list] = mapped_column(default=list)  # [{at, status, note}]

@@ -271,6 +271,9 @@ def opportunity_detail(opp_id: str):
     links = [f"[Faculty page]({d['faculty_url']})" if d["faculty_url"] else None,
              f"[Program page]({d['program_url']})" if d["program_url"] else None]
     st.markdown(" · ".join(filter(None, links)) or "No verified pages")
+    if st.button("Save to tracker", key=f"track-{opp_id}"):
+        if call("POST", "/applications", json={"opportunity_id": opp_id}):
+            st.success("Saved. See the Tracker page for the suggested next step.")
     research, funding, elig, evidence = st.tabs(["Research fit", "Funding", "Eligibility", "Evidence"])
     with research:
         for m in d["explanation"].get("research_matches", []):
@@ -328,10 +331,56 @@ def opportunities_page():
     opportunity_detail(st.selectbox("Details", list(labels), format_func=labels.get))
 
 
+TRACKER_STATUSES = ["shortlisted", "researching", "contacted", "replied", "applying", "submitted",
+                    "interview", "offer", "rejected", "declined", "withdrawn"]
+
+
+def tracker_page():
+    st.title("Application tracker")
+    apps = call("GET", "/applications") or []
+    if not apps:
+        st.info("Nothing tracked yet. Use “Save to tracker” on the Opportunities page.")
+        return
+    today = __import__("datetime").date.today().isoformat()
+    due = [a for a in apps if a["next_action_at"] and a["next_action_at"] <= today]
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Tracked", len(apps))
+    c2.metric("Actions due", len(due))
+    c3.metric("Contacted", sum(a["contacted_at"] is not None for a in apps))
+
+    rows = [{"id": a["id"], "professor": a["professor"], "university": a["university"],
+             "degree": DEGREE_LABEL.get(a["degree_type"]), "status": a["status"], "next action": a["next_action"],
+             "due": a["next_action_at"], "deadline": a["deadline"], "notes": a["notes"]} for a in apps]
+    edited = st.data_editor(
+        rows, hide_index=True, width="stretch", key="tracker",
+        disabled=["id", "professor", "university", "degree", "deadline"],
+        column_order=["professor", "university", "degree", "status", "next action", "due", "deadline", "notes"],
+        column_config={"status": st.column_config.SelectboxColumn(options=TRACKER_STATUSES, required=True),
+                       "due": st.column_config.DateColumn(), "deadline": st.column_config.DateColumn()},
+    )
+    if st.button("Save changes"):
+        saved = 0
+        for before, after in zip(rows, edited):
+            patch = {}
+            if after["status"] != before["status"]:
+                patch["status"] = after["status"]
+            if after["notes"] != before["notes"]:
+                patch["notes"] = after["notes"] or ""
+            if after["next action"] != before["next action"]:
+                patch["next_action"] = after["next action"]
+            if str(after["due"] or "") != str(before["due"] or ""):
+                patch["next_action_at"] = str(after["due"])[:10] if after["due"] else None
+            if patch and call("PATCH", f"/applications/{before['id']}", json=patch):
+                saved += 1
+        st.success(f"Saved {saved} change(s).")
+        st.rerun()
+
+
 st.set_page_config(page_title="Research Scout", layout="wide")
 st.navigation([
     st.Page(discover_page, title="Discover", icon=":material/travel_explore:"),
     st.Page(opportunities_page, title="Opportunities", icon=":material/leaderboard:"),
+    st.Page(tracker_page, title="Tracker", icon=":material/checklist:"),
     st.Page(research_page, title="Research", icon=":material/school:"),
     st.Page(profile_page, title="Profile", icon=":material/person:"),
 ]).run()

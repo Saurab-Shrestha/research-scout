@@ -30,6 +30,11 @@ uv run pytest
 
 ## Status
 
+Milestone 4 (tracker):
+
+- [x] `applications` with status history, deadlines and suggested next steps (Canada thesis routes: contact supervisor first)
+- [x] `POST/GET/PATCH/DELETE /api/v1/applications`; Tracker page with editable status, due dates and notes; "Save to tracker" on opportunities
+
 Milestone 3 (funding, eligibility, ranking):
 
 - [x] Program verification: grounded search for official admissions/funding pages, quoted extraction, university/domain checks
