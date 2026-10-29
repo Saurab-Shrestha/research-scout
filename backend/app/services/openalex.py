@@ -129,3 +129,33 @@ def recent_works(author_id: str, from_year: int, limit: int = 20) -> list[Work]:
             author_position=position,
         ))
     return works
+
+
+AUTHOR_FIELDS = "id,display_name,orcid,works_count,summary_stats,affiliations,last_known_institutions"
+
+
+def search_topics(query: str, limit: int = 3) -> list[dict]:
+    return [{"id": short_id(t["id"]), "name": t["display_name"]}
+            for t in _get("/topics", {"search": query, "per_page": limit})["results"]]
+
+
+def top_authors_for_topics(topic_ids: list[str], countries: list[str], from_year: int, limit: int = 200) -> list[dict]:
+    """Authors with the most recent works in these topics at institutions in these countries."""
+    data = _get("/works", {
+        "filter": f"topics.id:{'|'.join(topic_ids)},institutions.country_code:{'|'.join(countries)},"
+                  f"from_publication_date:{from_year}-01-01",
+        "group_by": "authorships.author.id",
+        "per_page": min(limit, 200),
+    })
+    return [{"id": short_id(g["key"]), "name": g["key_display_name"], "topic_works": g["count"]}
+            for g in data["group_by"] if g["key"]]
+
+
+def get_authors(author_ids: list[str]) -> list[dict]:
+    authors = []
+    for i in range(0, len(author_ids), 100):  # OpenAlex allows up to 100 OR-ed values
+        batch = author_ids[i:i + 100]
+        authors += _get("/authors", {
+            "filter": f"ids.openalex:{'|'.join(batch)}", "per_page": 100, "select": AUTHOR_FIELDS,
+        })["results"]
+    return authors

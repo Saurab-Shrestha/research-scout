@@ -73,7 +73,7 @@ def professor_detail(prof_id: str):
     if not p:
         return
     st.header(p["name"])
-    st.caption(" · ".join(filter(None, [p["title"], p["email"]])))
+    st.caption(" · ".join(filter(None, [p["university"], p["title"], p["email"]])))
     if p["faculty_url"]:
         st.markdown(f"[Faculty page]({p['faculty_url']})")
     if st.button("Refresh publications"):
@@ -113,9 +113,9 @@ def research_page():
     st.divider()
     professors = call("GET", "/professors") or []
     if not professors:
-        st.info("No professors yet. Add a faculty page above.")
+        st.info("No professors yet. Add a faculty page above or run a search on the Discover page.")
         return
-    names = {p["id"]: p["name"] for p in professors}
+    names = {p["id"]: f"{p['name']} — {p['university'] or 'unknown university'}" for p in professors}
     ids = list(names)
     default = ids.index(st.session_state["selected"]) if st.session_state.get("selected") in names else 0
     prof_id = st.selectbox("Professor", ids, index=default, format_func=names.get)
@@ -180,8 +180,69 @@ def profile_page():
                 st.success("Saved")
 
 
+AREAS = {"machine_learning": "Machine learning", "artificial_intelligence": "Artificial intelligence",
+         "quantum_computing": "Quantum computing"}
+STATUS_ICON = {"queued": "⏳", "running": "🔄", "completed": "✅", "failed": "❌"}
+
+
+@st.fragment(run_every="3s")
+def job_progress():
+    recent = call("GET", "/research-jobs", params={"limit": 5}) or []
+    if not recent:
+        st.info("No searches yet.")
+        return
+    for job in recent:
+        inputs = job["input"]
+        label = ", ".join(AREAS.get(a, a) for a in inputs.get("research_areas", []))
+        if inputs.get("query"):
+            label = f"{label} + “{inputs['query']}”" if label else inputs["query"]
+        with st.expander(f"{STATUS_ICON.get(job['status'], '')} {label} · {job['status']}",
+                         expanded=job is recent[0]):
+            for e in call("GET", f"/research-jobs/{job['id']}/events") or []:
+                st.write(f"`{e['event_type']}` {e['message']}")
+            if job["error_message"]:
+                st.error(job["error_message"])
+            result = job["result"] or {}
+            if result.get("professor_ids"):
+                profs = call("GET", "/professors", params={"ids": result["professor_ids"], "limit": 200}) or []
+                st.dataframe(
+                    [{"professor": p["name"], "university": p["university"], "openalex": p["openalex_id"]} for p in profs],
+                    width="stretch", hide_index=True,
+                )
+
+
+def discover_page():
+    st.title("Discover")
+    st.caption("Finds active researchers from OpenAlex publication data, then links their recent papers. "
+               "Funding and openings are verified in a later step.")
+    with st.form("discover"):
+        areas = st.multiselect("Research areas", list(AREAS), default=["quantum_computing", "machine_learning"],
+                               format_func=AREAS.get)
+        query = st.text_input("Additional topic (optional)", placeholder="quantum machine learning")
+        countries = st.multiselect("Countries", ["US", "CA"], default=["US", "CA"],
+                                   format_func={"US": "USA", "CA": "Canada"}.get)
+        degrees = st.multiselect("Degree types", ["phd", "thesis_masters", "course_masters"],
+                                 default=["phd", "thesis_masters"],
+                                 format_func={"phd": "PhD", "thesis_masters": "Thesis master's",
+                                              "course_masters": "Course-based master's"}.get)
+        max_results = st.slider("Max professors", 5, 100, 30, step=5)
+        if st.form_submit_button("Start search"):
+            if not areas and not query.strip():
+                st.error("Pick a research area or enter a topic.")
+            elif not countries:
+                st.error("Pick at least one country.")
+            elif call("POST", "/research-jobs", json={
+                "research_areas": areas, "query": query or None, "countries": countries,
+                "degree_types": degrees, "max_results": max_results,
+            }):
+                st.success("Search queued. The worker picks it up within a few seconds.")
+    st.subheader("Recent searches")
+    job_progress()
+
+
 st.set_page_config(page_title="Research Scout", layout="wide")
 st.navigation([
+    st.Page(discover_page, title="Discover", icon=":material/travel_explore:"),
     st.Page(research_page, title="Research", icon=":material/school:"),
     st.Page(profile_page, title="Profile", icon=":material/person:"),
 ]).run()

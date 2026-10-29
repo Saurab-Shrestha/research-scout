@@ -1,11 +1,11 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.models import Evidence, Professor, ProfessorPublication, Publication
+from app.db.models import Evidence, Professor, ProfessorPublication, Publication, University
 from app.db.session import get_db
 from app.services import publications
 from app.services.openalex import ScholarlyError
@@ -45,17 +45,19 @@ class ProfessorOut(BaseModel):
     orcid: str | None
     accepting_students: bool | None
     university_id: str | None
+    university: str | None = None
     department_id: str | None
     evidence: list[EvidenceOut] = []
     publications: list[PublicationOut] = []
 
 
-def _to_out(p: Professor, evidence: list[Evidence] = (), pubs: list[tuple[Publication, str | None]] = ()) -> ProfessorOut:
+def _to_out(p: Professor, university: str | None = None, evidence: list[Evidence] = (),
+            pubs: list[tuple[Publication, str | None]] = ()) -> ProfessorOut:
     return ProfessorOut(
         id=str(p.id), name=p.name, title=p.title, email=p.email, faculty_url=p.faculty_url,
         research_summary=p.research_summary, openalex_id=p.openalex_id, orcid=p.orcid,
         accepting_students=p.accepting_students,
-        university_id=str(p.university_id) if p.university_id else None,
+        university_id=str(p.university_id) if p.university_id else None, university=university,
         department_id=str(p.department_id) if p.department_id else None,
         evidence=[EvidenceOut(
             id=str(e.id), source_id=str(e.source_id), field_name=e.field_name,
@@ -71,11 +73,15 @@ def _to_out(p: Professor, evidence: list[Evidence] = (), pubs: list[tuple[Public
 
 
 @router.get("", response_model=list[ProfessorOut])
-def list_professors(q: str | None = None, limit: int = 50, db: Session = Depends(get_db)):
-    stmt = select(Professor).order_by(Professor.name).limit(min(limit, 200))
+def list_professors(q: str | None = None, ids: list[uuid.UUID] | None = Query(None), limit: int = 50,
+                    db: Session = Depends(get_db)):
+    stmt = (select(Professor, University.name).outerjoin(University, University.id == Professor.university_id)
+            .order_by(Professor.name).limit(min(limit, 200)))
     if q:
         stmt = stmt.where(Professor.name.ilike(f"%{q}%"))
-    return [_to_out(p) for p in db.scalars(stmt)]
+    if ids:
+        stmt = stmt.where(Professor.id.in_(ids))
+    return [_to_out(p, uni) for p, uni in db.execute(stmt)]
 
 
 @router.get("/{professor_id}", response_model=ProfessorOut)
@@ -92,7 +98,8 @@ def get_professor(professor_id: uuid.UUID, db: Session = Depends(get_db)):
         .where(ProfessorPublication.professor_id == professor_id)
         .order_by(Publication.publication_year.desc().nulls_last(), Publication.title)
     ).all()
-    return _to_out(professor, evidence, pubs)
+    university = db.get(University, professor.university_id) if professor.university_id else None
+    return _to_out(professor, university.name if university else None, evidence, pubs)
 
 
 @router.post("/{professor_id}/refresh")

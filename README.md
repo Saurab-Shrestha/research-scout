@@ -18,6 +18,7 @@ uv run alembic upgrade head
 
 ```bash
 uv run uvicorn app.main:app --app-dir backend --reload   # API on :8000, docs at /docs
+(cd backend && uv run python -m app.worker)               # job worker (discovery searches)
 uv run streamlit run frontend/app.py                      # UI on :8501
 ```
 
@@ -29,7 +30,17 @@ uv run pytest
 
 ## Status
 
-Milestone 1 in progress:
+Milestone 2 (discovery workflow) in progress:
+
+- [x] Postgres job queue (`SKIP LOCKED`) with retries and stale-lock recovery
+- [x] LangGraph discovery graph with Postgres checkpointer; failed jobs resume from the last completed node
+- [x] Scholarly-first discovery: OpenAlex topics → active US/CA authors → professors → recent publications
+- [x] `POST/GET /api/v1/research-jobs`, `GET /api/v1/research-jobs/{id}/events`; Discover page in the UI
+- [ ] Faculty page discovery (needs a search API) to verify titles, affiliations and contact details
+- [ ] MCP servers wrapping the discovery and scholarly tools
+- [ ] LLM search/topic planner (§13.1)
+
+Milestone 1 (complete except fixture evals):
 
 - [x] Project scaffold, config, Alembic migrations
 - [x] Health endpoint and candidate profile (`GET`/`PUT /api/v1/profile`)

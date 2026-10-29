@@ -124,27 +124,38 @@ def enrich_professor(db: Session, professor_id: uuid.UUID, years: int = 5, limit
     professor.orcid = professor.orcid or chosen.orcid
     professor.last_verified_at = datetime.now(UTC)
 
-    source = ingestion.save_api_record(db, chosen.api_url, chosen.raw)
+    record_identity_evidence(db, professor.id, chosen.api_url, chosen.raw,
+                             f"{chosen.name}; {reason}", chosen.openalex_id, chosen.orcid, confidence)
+    linked = link_recent_works(db, professor.id, chosen.openalex_id, confidence, years, limit)
+    db.commit()
+    return EnrichOutcome("resolved", reason, chosen.openalex_id, confidence, linked)
+
+
+def record_identity_evidence(db: Session, professor_id: uuid.UUID, api_url: str, raw: dict,
+                             excerpt: str, openalex_id: str, orcid: str | None, confidence: float) -> None:
+    source = ingestion.save_api_record(db, api_url, raw)
     db.execute(delete(Evidence).where(
-        Evidence.entity_type == "professor", Evidence.entity_id == professor.id,
+        Evidence.entity_type == "professor", Evidence.entity_id == professor_id,
         Evidence.extractor_version == RESOLVER_VERSION,
     ))
     db.add(Evidence(
-        source_id=source.id, entity_type="professor", entity_id=professor.id,
-        field_name="openalex_id", excerpt=f"{chosen.name}; {reason}",
-        claim_value_json={"value": chosen.openalex_id, "orcid": chosen.orcid},
+        source_id=source.id, entity_type="professor", entity_id=professor_id,
+        field_name="openalex_id", excerpt=excerpt,
+        claim_value_json={"value": openalex_id, "orcid": orcid},
         verification_status="api_record", confidence=confidence, extractor_version=RESOLVER_VERSION,
     ))
 
-    works = openalex.recent_works(chosen.openalex_id, datetime.now(UTC).year - years, limit)
+
+def link_recent_works(db: Session, professor_id: uuid.UUID, author_id: str, confidence: float,
+                      years: int = 5, limit: int = 20) -> int:
+    works = openalex.recent_works(author_id, datetime.now(UTC).year - years, limit)
     for work in works:
         pub = _upsert_publication(db, work)
         db.execute(insert(ProfessorPublication).values(
-            professor_id=professor.id, publication_id=pub.id,
+            professor_id=professor_id, publication_id=pub.id,
             author_position=work.author_position, identity_confidence=confidence,
         ).on_conflict_do_update(
             index_elements=["professor_id", "publication_id"],
             set_={"author_position": work.author_position, "identity_confidence": confidence},
         ))
-    db.commit()
-    return EnrichOutcome("resolved", reason, chosen.openalex_id, confidence, len(works))
+    return len(works)
