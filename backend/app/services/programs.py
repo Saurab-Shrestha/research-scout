@@ -10,7 +10,8 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.security import UnsafeURLError
-from app.db.models import Department, Evidence, FundingAssessment, Professor, Program, Source, University
+from app.db.models import (Department, Evidence, FundingAssessment, Opportunity, Professor, Program, Source,
+                           University)
 from app.prompts import program_extraction as prompt
 from app.schemas.extraction import Claim
 from app.schemas.program import ProgramExtraction
@@ -131,6 +132,47 @@ def _merge(extractions: list[tuple[Source, ProgramExtraction, str]]) -> tuple[di
     return verified, lists, evidence, unverified_funding
 
 
+LIST_FIELDS = ("funding_sources", "funding_conditions", "prerequisites")
+FUNDING_FIELDS = ("guaranteed_funding", "tuition_coverage", "stipend_amount", "funding_sources",
+                  "funding_for_international_students")
+
+
+def _stable_program(db: Session, professor: Professor, university_id: uuid.UUID, department: str | None,
+                    degree_type: str) -> Program | None:
+    """The program row this professor's route already uses, so re-checks update it instead of forking."""
+    opp = db.scalars(select(Opportunity).where(Opportunity.professor_id == professor.id,
+                                               Opportunity.degree_type == degree_type)).first()
+    program = db.get(Program, opp.program_id) if opp else None
+    if program and program.university_id == university_id:
+        return program
+    if department:
+        return db.scalars(select(Program).where(Program.university_id == university_id,
+                                                Program.degree_type == degree_type,
+                                                Program.department == department)).first()
+    return None
+
+
+def combine_evidence(db: Session, program_id: uuid.UUID, current: dict, current_lists: dict):
+    """Current run's verified values first, then verified values from earlier runs still on file."""
+    rows = db.scalars(select(Evidence).where(Evidence.entity_type == "program", Evidence.entity_id == program_id,
+                                             Evidence.verification_status == "quote_verified")
+                      .order_by(Evidence.created_at.desc())).all()
+    combined = dict(current)
+    combined_lists = {k: list(current_lists.get(k, [])) for k in LIST_FIELDS}
+    deadline_raw = None
+    for row in rows:
+        value = (row.claim_value_json or {}).get("value")
+        if row.field_name in LIST_FIELDS:
+            if value not in combined_lists[row.field_name]:
+                combined_lists[row.field_name].append(value)
+        else:
+            combined.setdefault(row.field_name, value)
+        if row.field_name == "application_deadline" and value == combined.get("application_deadline"):
+            deadline_raw = deadline_raw or row.excerpt
+    evidence_ids = [str(r.id) for r in rows if r.field_name in FUNDING_FIELDS]
+    return combined, combined_lists, evidence_ids, deadline_raw
+
+
 def _department_name(db: Session, professor: Professor) -> str | None:
     dept = db.get(Department, professor.department_id) if professor.department_id else None
     return dept.name if dept else None
@@ -193,48 +235,60 @@ def verify_program(db: Session, professor_id: uuid.UUID, degree_type: str, inten
         pages.append({"url": url, "result": f"accepted ({ex.page_kind})"})
 
     verified, lists, evidence, unverified_funding = _merge(accepted)
-    name = verified.get("program_name") or f"{DEGREE_LABELS[degree_type]} ({department or 'graduate program'})"
-    program = db.scalars(select(Program).where(
-        Program.university_id == university.id, Program.degree_type == degree_type,
-        Program.normalized_name == _norm(name))).first()
+    program = _stable_program(db, professor, university.id, department, degree_type)
+    name = verified.get("program_name") or (program.name if program else
+                                            f"{DEGREE_LABELS[degree_type]} ({department or 'graduate program'})")
+    if program is None:
+        program = db.scalars(select(Program).where(
+            Program.university_id == university.id, Program.degree_type == degree_type,
+            Program.normalized_name == _norm(name))).first()
     if program is None:
         program = Program(university_id=university.id, name=name, normalized_name=_norm(name), degree_type=degree_type)
         db.add(program)
-    deadline = verified.get("application_deadline")
-    try:
-        program.deadline = date.fromisoformat(deadline) if deadline else None
-    except ValueError:
-        program.deadline = None
-    program.department = department
-    program.deadline_raw = next((c.evidence_quote for _, n, c, ok in evidence if n == "application_deadline" and ok), None)
-    program.url = accepted[0][0].canonical_url if accepted else None
-    program.source_ids = [str(s.id) for s, _, _ in accepted]
-    program.requirements_json = {
-        "english": lists["english"], "pte_accepted": verified.get("pte_accepted"),
-        "minimum_gpa": verified.get("minimum_gpa"),
-        "international_applicants_accepted": verified.get("international_applicants_accepted"), "requires_masters_for_phd": verified.get("requires_masters_for_phd"),
-        "supervisor_required": verified.get("supervisor_required_before_admission"),
-        "deadline_term": verified.get("deadline_term"), "prerequisites": lists["prerequisites"],
-        "warnings": [w for _, ex, _ in accepted for w in ex.warnings], "pages": pages,
-    }
-    program.last_verified_at = datetime.now(UTC)
+    elif program.normalized_name != _norm(name) and not db.scalars(select(Program).where(
+            Program.university_id == university.id, Program.degree_type == degree_type,
+            Program.normalized_name == _norm(name))).first():
+        program.name, program.normalized_name = name, _norm(name)
+    previous = program.requirements_json or {}
+    program.department = department or program.department
     db.flush()
 
-    db.execute(delete(Evidence).where(Evidence.entity_type == "program", Evidence.entity_id == program.id))
-    evidence_ids = []
+    # Replace evidence only from pages re-read now; verified evidence from earlier runs stays on file,
+    # so one run quoting fewer sentences does not erase what an earlier run verified.
+    reread = [s.id for s, _, _ in accepted]
+    if reread:
+        db.execute(delete(Evidence).where(Evidence.entity_type == "program", Evidence.entity_id == program.id,
+                                          Evidence.source_id.in_(reread)))
     for source_id, field_name, claim, ok in evidence:
-        row = Evidence(source_id=source_id, entity_type="program", entity_id=program.id, field_name=field_name,
-                       excerpt=claim.evidence_quote or "", claim_value_json={"value": claim.value},
-                       verification_status="quote_verified" if ok else "quote_not_found",
-                       extractor_version=prompt.VERSION)
-        db.add(row)
-        db.flush()
-        if ok and field_name in ("guaranteed_funding", "tuition_coverage", "stipend_amount", "funding_sources",
-                                 "funding_for_international_students"):
-            evidence_ids.append(str(row.id))
+        db.add(Evidence(source_id=source_id, entity_type="program", entity_id=program.id, field_name=field_name,
+                        excerpt=claim.evidence_quote or "", claim_value_json={"value": claim.value},
+                        verification_status="quote_verified" if ok else "quote_not_found",
+                        extractor_version=prompt.VERSION))
+    db.flush()
 
-    funding = classify_funding(university.country, degree_type, verified, lists["funding_sources"],
-                               lists["funding_conditions"], unverified_funding)
+    combined, combined_lists, evidence_ids, deadline_raw = combine_evidence(db, program.id, verified, lists)
+    try:
+        program.deadline = date.fromisoformat(combined["application_deadline"]) if combined.get("application_deadline") else None
+    except ValueError:
+        program.deadline = None
+    program.deadline_raw = deadline_raw
+    program.url = accepted[0][0].canonical_url if accepted else program.url
+    program.source_ids = list(dict.fromkeys((program.source_ids or []) + [str(i) for i in reread]))
+    program.requirements_json = {
+        "english": lists["english"] or previous.get("english", []),
+        "pte_accepted": combined.get("pte_accepted"),
+        "minimum_gpa": combined.get("minimum_gpa"),
+        "international_applicants_accepted": combined.get("international_applicants_accepted"),
+        "requires_masters_for_phd": combined.get("requires_masters_for_phd"),
+        "supervisor_required": combined.get("supervisor_required_before_admission"),
+        "deadline_term": combined.get("deadline_term"), "prerequisites": combined_lists["prerequisites"],
+        "warnings": [w for _, ex, _ in accepted for w in ex.warnings] or previous.get("warnings", []),
+        "pages": pages,
+    }
+    program.last_verified_at = datetime.now(UTC)
+
+    funding = classify_funding(university.country, degree_type, combined, combined_lists["funding_sources"],
+                               combined_lists["funding_conditions"], unverified_funding)
     assessment = db.scalars(select(FundingAssessment).where(FundingAssessment.program_id == program.id)).first()
     if assessment is None:
         assessment = FundingAssessment(program_id=program.id, **funding)
@@ -242,7 +296,7 @@ def verify_program(db: Session, professor_id: uuid.UUID, degree_type: str, inten
     else:
         for k, v in funding.items():
             setattr(assessment, k, v)
-    assessment.conditions_json = lists["funding_conditions"]
+    assessment.conditions_json = combined_lists["funding_conditions"]
     assessment.evidence_ids = evidence_ids
     db.commit()
     return ProgramOutcome(program.id, "verified" if accepted else "default_only", pages)

@@ -221,3 +221,27 @@ def test_network_errors_become_llm_errors(monkeypatch):
     monkeypatch.setattr(llm, "_client", lambda: Boom)
     with pytest.raises(llm.LLMError, match="RemoteProtocolError"):
         llm.search_text("q", "m")
+
+
+def test_rerun_quoting_less_keeps_earlier_verified_funding(client, monkeypatch):
+    prof_id = seed()
+    monkeypatch.setattr(llm, "search_text", lambda prompt, model: ("https://grad.example.edu/phd", []))
+    monkeypatch.setattr(ingestion, "fetch_public_page", lambda url: FetchResult(url, 200, "text/plain", ADMISSIONS))
+    monkeypatch.setattr(llm, "embed", lambda texts: [[1.0, 0.0] for _ in texts])
+
+    def run(ex):
+        monkeypatch.setattr(llm, "generate_structured", lambda *a: llm.LLMResult(ex, "m", 1, 1))
+        with SessionLocal() as db:
+            job = ResearchJob(job_type="evaluation", status="running", attempts=1,
+                              input_json={"professor_ids": [str(prof_id)], "degree_types": ["phd"], "force": True})
+            db.add(job)
+            db.commit()
+        run_job({"evaluation": evaluation.build_graph(InMemorySaver())}, job.id)
+
+    run(program_extraction())
+    # Second run on a different page quotes only the stipend, not the guarantee or tuition
+    monkeypatch.setattr(llm, "search_text", lambda prompt, model: ("https://grad.example.edu/other", []))
+    weaker = program_extraction()
+    weaker.guaranteed_funding, weaker.tuition_coverage = claim(), claim()
+    run(weaker)
+    assert client.get("/api/v1/opportunities").json()[0]["funding_status"] == "confirmed_full"
