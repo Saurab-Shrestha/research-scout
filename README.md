@@ -38,7 +38,7 @@ Milestone 2 (discovery workflow) in progress:
 - [x] `POST/GET /api/v1/research-jobs`, `GET /api/v1/research-jobs/{id}/events`; Discover page in the UI
 - [x] Faculty page discovery: Gemini + Google Search proposes URLs; each is fetched, extracted and accepted only if name and university match (`POST /api/v1/professors/{id}/find-page`)
 - [x] MCP server (`backend/app/mcp_server.py`, registered in `.mcp.json`): 12 tools across discovery, scholarly and workspace groups; no generic SQL/write tool
-- [ ] LLM search/topic planner (§13.1)
+- [x] Gemini topic planner: picks relevant OpenAlex topics from candidates, covers every selected area, falls back to best match per query
 
 Milestone 1 (complete except fixture evals):
 

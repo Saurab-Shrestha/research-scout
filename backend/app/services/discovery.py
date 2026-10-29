@@ -4,11 +4,14 @@ import uuid
 from collections import Counter
 from dataclasses import dataclass
 
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.db.models import Professor, University
-from app.services import openalex, publications
+from app.prompts import topic_planner
+from app.services import llm, openalex, publications
 
 AREA_QUERIES = {
     "machine_learning": ["machine learning", "deep learning"],
@@ -131,3 +134,33 @@ def upsert_candidate(db: Session, c: Candidate) -> tuple[uuid.UUID, bool]:
     )
     db.commit()
     return professor.id, created
+
+
+class SelectedTopic(BaseModel):
+    topic_id: str
+    reason: str
+
+
+class TopicSelection(BaseModel):
+    selected: list[SelectedTopic]
+
+
+def choose_topics(research_areas: list[str], query: str | None, candidates_per_query: dict[str, list[dict]]) -> tuple[list[dict], str]:
+    """Let Gemini pick relevant topics from OpenAlex candidates; fall back to best match per query."""
+    candidates = {c["id"]: c for cs in candidates_per_query.values() for c in cs}
+    fallback = list({cs[0]["id"]: cs[0] for cs in candidates_per_query.values() if cs}.values())
+    if len(candidates) <= 1:
+        return fallback, "single candidate"
+    try:
+        result = llm.generate_structured(
+            topic_planner.SYSTEM,
+            topic_planner.build_user_message(research_areas, query, list(candidates.values())),
+            TopicSelection,
+            settings.extraction_model,
+        )
+    except llm.LLMError as e:
+        return fallback, f"fallback (planner failed: {e})"
+    chosen = [candidates[t.topic_id] | {"reason": t.reason}
+              for t in result.parsed.selected if t.topic_id in candidates]  # ignore invented IDs
+    chosen = list({c["id"]: c for c in chosen}.values())[:6]
+    return (chosen, topic_planner.VERSION) if chosen else (fallback, "fallback (planner chose nothing)")

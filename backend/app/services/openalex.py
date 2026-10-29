@@ -135,7 +135,9 @@ AUTHOR_FIELDS = "id,display_name,orcid,works_count,summary_stats,affiliations,la
 
 
 def search_topics(query: str, limit: int = 3) -> list[dict]:
-    return [{"id": short_id(t["id"]), "name": t["display_name"]}
+    return [{"id": short_id(t["id"]), "name": t["display_name"],
+             "subfield": (t.get("subfield") or {}).get("display_name"),
+             "description": (t.get("description") or "")[:300]}
             for t in _get("/topics", {"search": query, "per_page": limit})["results"]]
 
 

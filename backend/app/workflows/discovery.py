@@ -15,7 +15,7 @@ from app.services import discovery, llm, openalex, page_finder, publications
 from app.services.jobs import emit
 
 ALLOWED_COUNTRIES = {"US", "CA"}
-TOPICS_PER_QUERY = 1  # more topics per query drifted into adjacent fields (e.g. condensed matter)
+TOPIC_CANDIDATES_PER_QUERY = 5  # the planner picks from these; taking them all drifted into adjacent fields
 ACTIVE_YEARS = 3
 
 
@@ -49,13 +49,12 @@ def validate_request(state: DiscoveryState) -> dict:
 
 
 def find_topics(state: DiscoveryState) -> dict:
-    # ponytail: deterministic topic search; add the LLM search planner (§13.1) if topic recall is poor.
-    topics = {}
-    for q in discovery.topic_queries(state["research_areas"], state.get("query")):
-        for t in openalex.search_topics(q, TOPICS_PER_QUERY):
-            topics[t["id"]] = t["name"]
-    emit(state["job_id"], "topics", f"Matched {len(topics)} OpenAlex topics", topics=list(topics.values()))
-    return {"topic_ids": list(topics)}
+    candidates = {q: openalex.search_topics(q, TOPIC_CANDIDATES_PER_QUERY)
+                  for q in discovery.topic_queries(state["research_areas"], state.get("query"))}
+    chosen, method = discovery.choose_topics(state["research_areas"], state.get("query"), candidates)
+    emit(state["job_id"], "topics", f"Selected {len(chosen)} OpenAlex topics ({method})",
+         topics=[c["name"] for c in chosen], reasons=[c.get("reason") for c in chosen])
+    return {"topic_ids": [c["id"] for c in chosen]}
 
 
 def discover_authors(state: DiscoveryState) -> dict:

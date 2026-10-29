@@ -1283,7 +1283,7 @@ If time is limited, keep the order but defer visual polish, sophisticated search
 | ADR-03 | Deterministic graph with bounded LLM steps                    | Testable, reproducible, cheaper                                    | Clear evidence that open-ended planning helps  |
 | ADR-04 | Postgres job queue instead of Celery + Redis                  | One less moving part for a single user                             | Concurrent jobs exceed one worker's capacity   |
 | ADR-05 | pgvector instead of dedicated vector DB                       | Data volume is small; same DB                                      | > ~1M vectors or latency issues                |
-| ADR-06 | MCP servers co-located (stdio) in MVP                         | Clean tool contracts without deployment overhead                   | Need for remote tools or isolation             |
+| ADR-06 | One co-located MCP server (stdio) in MVP; the LangGraph pipeline calls the same services in-process | Clean tool contracts for external MCP clients without an extra hop or deployment overhead in our own pipeline | Need for remote tools, isolation, or third-party tool servers |
 | ADR-07 | Deterministic weighted scoring; LLM only explains             | Transparent, auditable ranking                                     | Enough labelled outcomes to learn weights      |
 | ADR-08 | Human-in-the-loop for all outbound content                    | High-consequence, reputational actions                             | Never for MVP                                  |
 | ADR-09 | Provider-agnostic LLM adapter                                 | Compare models in evals; avoid lock-in                             | —                                              |

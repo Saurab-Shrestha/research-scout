@@ -169,3 +169,40 @@ def test_primary_institution_must_agree_with_last_known():
     a["last_known_institutions"] = [inst("I7", "NIMS", "JP", "facility")]
     chosen, note = discovery.primary_institution(a, ["US", "CA"], YEAR)
     assert chosen is None and "last known" in note
+
+
+CANDIDATES = {
+    "quantum computing": [{"id": "T1", "name": "Quantum Computing Algorithms"},
+                          {"id": "T2", "name": "Quantum and electron transport phenomena"}],
+    "quantum information": [{"id": "T3", "name": "Quantum Information and Cryptography"}],
+}
+
+
+def fake_planner(monkeypatch, selected=None, error=None):
+    from app.services import llm
+
+    def fake(system, user, schema, model):
+        if error:
+            raise llm.LLMError(error)
+        return llm.LLMResult(schema(selected=[{"topic_id": t, "reason": "r"} for t in selected]), model, 1, 1)
+    monkeypatch.setattr(llm, "generate_structured", fake)
+
+
+def test_planner_picks_subset_and_ignores_invented_ids(monkeypatch):
+    fake_planner(monkeypatch, selected=["T1", "T3", "T999"])
+    chosen, method = discovery.choose_topics(["quantum_computing"], None, CANDIDATES)
+    assert [c["id"] for c in chosen] == ["T1", "T3"]
+    assert method.startswith("topic-planner")
+
+
+def test_planner_failure_falls_back_to_best_match_per_query(monkeypatch):
+    fake_planner(monkeypatch, error="quota")
+    chosen, method = discovery.choose_topics(["quantum_computing"], None, CANDIDATES)
+    assert [c["id"] for c in chosen] == ["T1", "T3"]
+    assert method.startswith("fallback")
+
+
+def test_planner_choosing_nothing_falls_back(monkeypatch):
+    fake_planner(monkeypatch, selected=["T999"])
+    chosen, method = discovery.choose_topics(["quantum_computing"], None, CANDIDATES)
+    assert [c["id"] for c in chosen] == ["T1", "T3"] and "nothing" in method
