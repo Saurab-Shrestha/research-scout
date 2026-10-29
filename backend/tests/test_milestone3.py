@@ -245,3 +245,33 @@ def test_rerun_quoting_less_keeps_earlier_verified_funding(client, monkeypatch):
     weaker.guaranteed_funding, weaker.tuition_coverage = claim(), claim()
     run(weaker)
     assert client.get("/api/v1/opportunities").json()[0]["funding_status"] == "confirmed_full"
+
+
+def test_parallel_run_covers_every_university_and_caches_default_only(client, monkeypatch):
+    prof_id = seed()
+    with SessionLocal() as db:
+        other = University(name="Other University", normalized_name="other university", country="US", aliases=[])
+        db.add(other)
+        db.flush()
+        prof2 = Professor(name="Alan Turing", university_id=other.id)
+        db.add(prof2)
+        db.commit()
+        ids = [str(prof_id), str(prof2.id)]
+    searches = []
+    monkeypatch.setattr(llm, "search_text", lambda prompt, model: (searches.append(prompt), ("no pages found", []))[1])
+    monkeypatch.setattr(llm, "embed", lambda texts: [[1.0, 0.0] for _ in texts])
+
+    def run():
+        with SessionLocal() as db:
+            job = ResearchJob(job_type="evaluation", status="running", attempts=1,
+                              input_json={"professor_ids": ids, "degree_types": ["phd", "thesis_masters"]})
+            db.add(job)
+            db.commit()
+        return run_job({"evaluation": evaluation.build_graph(InMemorySaver())}, job.id)
+
+    assert run() == "completed"
+    assert len(searches) == 8  # 2 professors × 2 degrees, each retried once on an empty answer
+    with SessionLocal() as db:
+        assert db.query(Program).count() == 4
+    run()
+    assert len(searches) == 8  # default-only results are reused for a day, not searched again

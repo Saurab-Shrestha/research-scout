@@ -22,6 +22,7 @@ from app.services.fetcher import FetchError
 DEGREE_LABELS = {"phd": "PhD", "thesis_masters": "research (thesis-based) master's", "course_masters": "course-based master's"}
 MAX_PAGES = 4
 REVERIFY_AFTER = timedelta(days=30)
+RETRY_DEFAULT_ONLY_AFTER = timedelta(days=1)  # no official page found: try again tomorrow, not every run
 
 SEARCH_PROMPT = """Find the official graduate admissions and funding pages for the {degree} program at
 {university} in which {professor} (department: {department}) supervises graduate students.
@@ -179,9 +180,11 @@ def _department_name(db: Session, professor: Professor) -> str | None:
 
 
 def is_fresh(program: Program | None) -> bool:
-    """Recently verified from at least one official page. Default-only programs are always retried."""
-    return bool(program and program.source_ids and program.last_verified_at
-                and datetime.now(UTC) - program.last_verified_at < REVERIFY_AFTER)
+    """Verified from an official page within 30 days, or found no page within the last day."""
+    if not (program and program.last_verified_at):
+        return False
+    return datetime.now(UTC) - program.last_verified_at < (REVERIFY_AFTER if program.source_ids
+                                                            else RETRY_DEFAULT_ONLY_AFTER)
 
 
 def find_cached_program(db: Session, university_id: uuid.UUID, department: str | None, degree_type: str) -> Program | None:
