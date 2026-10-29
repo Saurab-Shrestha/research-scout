@@ -47,16 +47,6 @@ def _claims(ex: PageExtraction):
             yield from ((field, c) for c in value if isinstance(c, Claim))
 
 
-def _country_from_domain(domain: str | None) -> str | None:
-    if not domain:
-        return None
-    if domain.endswith(".ca"):
-        return "CA"
-    if domain.endswith(".edu"):
-        return "US"
-    return None
-
-
 def _get_or_create(db: Session, model, lookup: dict, **defaults):
     row = db.scalars(select(model).filter_by(**lookup)).first()
     if row is None:
@@ -72,7 +62,7 @@ def _upsert_professor(db: Session, source: Source, ex: PageExtraction, ok) -> Pr
         name = ex.university.value.strip()
         university = _get_or_create(
             db, University, {"normalized_name": name.casefold().removeprefix("the ")},
-            name=name, country=_country_from_domain(source.domain),
+            name=name,  # country comes from OpenAlex; domains are unreliable (cs.toronto.edu)
         )
         if ok(ex.department):
             department = _get_or_create(

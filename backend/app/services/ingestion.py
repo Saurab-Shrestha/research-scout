@@ -1,6 +1,7 @@
 """Store fetched pages and pasted posts as deduplicated sources."""
 
 import hashlib
+import json
 from urllib.parse import urlsplit
 
 import trafilatura
@@ -29,6 +30,23 @@ def _save(db: Session, **values) -> tuple[Source, bool]:
         Source.content_hash == values["content_hash"],
     )).one()
     return existing, False
+
+
+def save_api_record(db: Session, url: str, payload: dict) -> Source:
+    """Keep the scholarly API response that backs an identity claim, so evidence has a source."""
+    content = json.dumps(payload, sort_keys=True)
+    source, _ = _save(
+        db,
+        url=url,
+        canonical_url=url,
+        domain=urlsplit(url).hostname,
+        source_type="api_record",
+        content_hash=_sha256(content),
+        http_status=200,
+        content_type="application/json",
+        raw_content=content,
+    )
+    return source
 
 
 def ingest_url(db: Session, url: str) -> tuple[Source, bool]:

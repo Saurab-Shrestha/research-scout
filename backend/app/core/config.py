@@ -6,6 +6,7 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+psycopg://localhost/research_scout"
     contact_email: str = ""
+    openalex_api_key: str = ""  # free key: https://openalex.org/settings/api
 
     google_api_key: str = ""
     google_genai_use_vertexai: bool = True  # Vertex AI express mode
