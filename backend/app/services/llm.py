@@ -1,5 +1,6 @@
 """Thin LLM adapter. Gemini today; keep the signature provider-neutral (ADR-09)."""
 
+import threading
 from dataclasses import dataclass
 from functools import cache, wraps
 
@@ -35,11 +36,21 @@ def _wrap_errors(fn):
     return inner
 
 
+_client_lock = threading.Lock()
+
+
 @cache
-def _client() -> genai.Client:
+def _make_client() -> genai.Client:
     if not settings.google_api_key:
         raise LLMError("GOOGLE_API_KEY is not set")
     return genai.Client(vertexai=settings.google_genai_use_vertexai, api_key=settings.google_api_key)
+
+
+def _client() -> genai.Client:
+    # One shared client. Without the lock, parallel first calls each build a client; the extras are
+    # garbage-collected mid-request and genai.Client.__del__ closes their connection pool.
+    with _client_lock:
+        return _make_client()
 
 
 @_wrap_errors

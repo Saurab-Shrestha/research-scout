@@ -275,3 +275,14 @@ def test_parallel_run_covers_every_university_and_caches_default_only(client, mo
         assert db.query(Program).count() == 4
     run()
     assert len(searches) == 8  # default-only results are reused for a day, not searched again
+
+
+def test_llm_client_is_shared_across_threads(monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    import time
+    llm._make_client.cache_clear()
+    monkeypatch.setattr(llm.genai, "Client", lambda **kw: (time.sleep(0.05), object())[1])
+    with ThreadPoolExecutor(8) as pool:
+        clients = list(pool.map(lambda _: llm._client(), range(8)))
+    llm._make_client.cache_clear()
+    assert len({id(c) for c in clients}) == 1
