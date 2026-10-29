@@ -13,7 +13,7 @@ from app.core.config import settings
 from app.db.models import ResearchJob
 from app.db.session import SessionLocal
 from app.services import jobs
-from app.workflows import discovery
+from app.workflows import discovery, evaluation
 
 log = logging.getLogger("worker")
 POLL_SECONDS = 2
@@ -21,6 +21,9 @@ POLL_SECONDS = 2
 
 def initial_state(job: ResearchJob) -> dict:
     data = job.input_json
+    if job.job_type == "evaluation":
+        return {"job_id": str(job.id), "professor_ids": data.get("professor_ids") or [],
+                "degree_types": data.get("degree_types") or ["phd", "thesis_masters"]}
     return {
         "job_id": str(job.id),
         "query": data.get("query"),
@@ -31,18 +34,19 @@ def initial_state(job: ResearchJob) -> dict:
     }
 
 
-def run_job(graph, job_id: uuid.UUID) -> str:
-    """Run or resume one job. Returns its final status."""
+def run_job(graphs, job_id: uuid.UUID) -> str:
+    """Run or resume one job. `graphs` maps job_type -> compiled graph (or is a single graph)."""
     config = {"configurable": {"thread_id": str(job_id)}}
     with SessionLocal() as db:
         job = db.get(ResearchJob, job_id)
         state = initial_state(job)
+    graph = graphs[job.job_type] if isinstance(graphs, dict) else graphs
     try:
         if graph.get_state(config).next:
             jobs.emit(job_id, "resumed", "Resuming from last checkpoint")
             result = graph.invoke(None, config)
         else:
-            jobs.emit(job_id, "started", "Discovery started")
+            jobs.emit(job_id, "started", f"{job.job_type.capitalize()} started")
             result = graph.invoke(state, config)
     except Exception as e:  # noqa: BLE001 - any node failure is recorded and retried
         log.exception("job %s failed", job_id)
@@ -58,7 +62,7 @@ def main() -> None:
     conn = settings.database_url.replace("postgresql+psycopg://", "postgresql://")
     with PostgresSaver.from_conn_string(conn) as checkpointer:
         checkpointer.setup()
-        graph = discovery.build_graph(checkpointer)
+        graphs = {"discovery": discovery.build_graph(checkpointer), "evaluation": evaluation.build_graph(checkpointer)}
         log.info("worker started")
         # ponytail: one job at a time; run more worker processes if throughput matters.
         while True:
@@ -67,7 +71,7 @@ def main() -> None:
             if job_id is None:
                 time.sleep(POLL_SECONDS)
                 continue
-            log.info("job %s -> %s", job_id, run_job(graph, job_id))
+            log.info("job %s -> %s", job_id, run_job(graphs, job_id))
 
 
 if __name__ == "__main__":

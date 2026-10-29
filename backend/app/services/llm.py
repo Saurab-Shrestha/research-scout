@@ -65,3 +65,19 @@ def search_text(prompt: str, model: str) -> tuple[str, list[str]]:
     )
     metadata = response.candidates[0].grounding_metadata if response.candidates else None
     return response.text or "", list((metadata.web_search_queries or []) if metadata else [])
+
+
+EMBEDDING_MODEL = "gemini-embedding-001"
+EMBEDDING_DIM = 768
+
+
+def embed(texts: list[str]) -> list[list[float]]:
+    """Semantic-similarity embeddings, batched."""
+    vectors = []
+    for i in range(0, len(texts), 100):
+        response = _client().models.embed_content(
+            model=EMBEDDING_MODEL, contents=texts[i:i + 100],
+            config=types.EmbedContentConfig(task_type="SEMANTIC_SIMILARITY", output_dimensionality=EMBEDDING_DIM),
+        )
+        vectors += [e.values for e in response.embeddings]
+    return vectors

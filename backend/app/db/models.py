@@ -1,7 +1,7 @@
 """Milestone 1 tables. Opportunities, funding, matching, applications and drafts arrive in later migrations."""
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import DateTime, ForeignKey, Index, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB
@@ -30,6 +30,8 @@ class CandidateProfile(Entity, Base):
     career_goals: Mapped[str | None] = mapped_column(Text)
     intended_start_term: Mapped[str | None]
     funding_preferences_json: Mapped[dict] = mapped_column(default=dict)
+    # ponytail: embeddings as JSONB lists, compared in Python; move to pgvector past ~100k vectors.
+    interest_embeddings: Mapped[dict | None]  # {interest text: vector}
 
 
 class University(Entity, Base):
@@ -81,6 +83,7 @@ class Publication(Entity, Base):
     publication_year: Mapped[int | None]
     url: Mapped[str | None]
     open_access_url: Mapped[str | None]
+    embedding: Mapped[list | None]
 
 
 class ProfessorPublication(Base):
@@ -147,3 +150,73 @@ class JobEvent(Entity, Base):
     event_type: Mapped[str]
     message: Mapped[str] = mapped_column(Text)
     metadata_json: Mapped[dict] = mapped_column(default=dict)
+
+
+class Program(Entity, Base):
+    """A graduate program route (e.g. PhD in Physics at Harvard) with requirements from official pages."""
+    __tablename__ = "programs"
+    __table_args__ = (UniqueConstraint("university_id", "normalized_name", "degree_type"),)
+
+    university_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("universities.id"))
+    name: Mapped[str]
+    normalized_name: Mapped[str]
+    degree_type: Mapped[str]  # phd | thesis_masters | course_masters
+    department: Mapped[str | None]  # as known when searched; reuses the program for colleagues
+    url: Mapped[str | None]
+    deadline: Mapped[date | None]
+    deadline_raw: Mapped[str | None]
+    requirements_json: Mapped[dict] = mapped_column(default=dict)  # english, gpa, prerequisites, flags
+    source_ids: Mapped[list] = mapped_column(default=list)
+    last_verified_at: Mapped[datetime | None]
+
+
+class FundingAssessment(Entity, Base):
+    """Current funding classification for a program (Planning §8.4). One row per program."""
+    __tablename__ = "funding_assessments"
+
+    program_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("programs.id"), unique=True)
+    funding_status: Mapped[str]
+    basis: Mapped[str]
+    timing: Mapped[str]
+    method: Mapped[str]  # extracted | default
+    counts_for_visa_proof: Mapped[bool | None]
+    tuition_coverage: Mapped[str]
+    stipend_amount: Mapped[float | None]
+    currency: Mapped[str | None]
+    stipend_period: Mapped[str | None]
+    duration_months: Mapped[int | None]
+    international_eligible: Mapped[bool | None]
+    conditions_json: Mapped[list] = mapped_column(default=list)
+    evidence_ids: Mapped[list] = mapped_column(default=list)
+    explanation: Mapped[str] = mapped_column(Text, default="")
+
+
+class Opportunity(Entity, Base):
+    """Supervision route: a professor within a program."""
+    __tablename__ = "opportunities"
+    __table_args__ = (UniqueConstraint("professor_id", "program_id"),)
+
+    professor_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("professors.id"))
+    program_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("programs.id"))
+    degree_type: Mapped[str]
+    title: Mapped[str]
+    status: Mapped[str] = mapped_column(default="unknown")  # open | unknown | closed
+
+
+class MatchResult(Entity, Base):
+    __tablename__ = "match_results"
+    __table_args__ = (UniqueConstraint("candidate_profile_id", "opportunity_id"),)
+
+    candidate_profile_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("candidate_profiles.id"))
+    opportunity_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("opportunities.id"))
+    research_score: Mapped[float]
+    funding_score: Mapped[float]
+    eligibility_score: Mapped[float]
+    availability_score: Mapped[float]
+    timing_score: Mapped[float]
+    overall_score: Mapped[float] = mapped_column(index=True)
+    eligibility_status: Mapped[str]
+    funding_status: Mapped[str]
+    excluded_reason: Mapped[str | None]  # set when filtered out of the ranking
+    explanation_json: Mapped[dict] = mapped_column(default=dict)
+    scoring_version: Mapped[str]
