@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -28,3 +29,6 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# httpx logs full request URLs at INFO, which would leak the OpenAlex api_key query parameter.
+logging.getLogger("httpx").setLevel(logging.WARNING)
