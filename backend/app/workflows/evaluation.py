@@ -18,6 +18,7 @@ class EvaluationState(TypedDict):
     job_id: str
     professor_ids: list[str]
     degree_types: list[str]
+    force: NotRequired[bool]
     opportunity_ids: NotRequired[list[str]]
     errors: NotRequired[list[dict]]
     result_summary: NotRequired[dict]
@@ -45,11 +46,12 @@ def verify_programs(state: EvaluationState) -> dict:
             for degree in state["degree_types"]:
                 existing = db.scalars(select(Opportunity).join(Program).where(
                     Opportunity.professor_id == professor.id, Program.degree_type == degree)).first()
-                if existing and programs.is_fresh(db.get(Program, existing.program_id)):
+                if existing and not state.get("force") and programs.is_fresh(db.get(Program, existing.program_id)):
                     opportunity_ids.append(str(existing.id))
                     continue  # verified recently; also makes resumed runs skip finished work
                 try:
-                    outcome = programs.verify_program(db, professor.id, degree, profile.intended_start_term)
+                    outcome = programs.verify_program(db, professor.id, degree, profile.intended_start_term,
+                                                      force=bool(state.get("force")))
                 except (llm.LLMError, openalex.ScholarlyError) as e:
                     db.rollback()
                     errors.append({"professor_id": prof_id, "degree": degree, "error": str(e)})

@@ -61,6 +61,13 @@ def test_pte_not_accepted_is_ineligible():
     assert status == "ineligible"
 
 
+def test_program_closed_to_internationals_is_ineligible():
+    status, checks = eligibility.evaluate(PROFILE, {"international_applicants_accepted": "no"}, "CA",
+                                          "thesis_masters", None, TODAY)
+    assert status == "ineligible"
+    assert {c["name"]: c["status"] for c in checks}["international"] == "fail"
+
+
 def test_passed_deadline_is_ineligible():
     status, checks = eligibility.evaluate(PROFILE, {}, "US", "phd", date(2026, 10, 1), TODAY)
     assert status == "ineligible" and "passed" in checks[-1]["detail"]
@@ -117,7 +124,7 @@ def program_extraction() -> ProgramExtraction:
         funding_conditions=[], application_deadline=claim("2026-12-15", "Deadline: December 15, 2026"),
         deadline_term=claim(), english_tests=[EnglishRequirement(test="PTE Academic", minimum="68",
                                                                   evidence_quote="PTE Academic minimum 68")],
-        pte_accepted=claim("yes", "PTE Academic"), minimum_gpa=claim(), requires_masters_for_phd=claim(),
+        pte_accepted=claim("yes", "PTE Academic"), international_applicants_accepted=claim(), minimum_gpa=claim(), requires_masters_for_phd=claim(),
         supervisor_required_before_admission=claim(), prerequisites=[], warnings=[],
     )
 

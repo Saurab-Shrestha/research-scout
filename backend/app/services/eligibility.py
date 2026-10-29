@@ -64,6 +64,22 @@ def check_degree(profile: dict, requirements: dict, country: str | None, degree_
     return Check("degree", "ok", "US PhDs usually admit from a bachelor's.")
 
 
+def is_international(profile: dict) -> bool:
+    # ponytail: inferred from education countries; add an explicit citizenship field if this misfires.
+    return not any((e.get("country") or "").upper() in ("US", "CA") for e in profile.get("education", []))
+
+
+def check_international(profile: dict, requirements: dict) -> Check:
+    accepted = requirements.get("international_applicants_accepted")
+    if not is_international(profile):
+        return Check("international", "ok", "Domestic applicant.")
+    if accepted == "no":
+        return Check("international", "fail", "Program does not admit international applicants.")
+    if accepted == "yes":
+        return Check("international", "ok", "International applicants are admitted.")
+    return Check("international", "ok", "No restriction on international applicants stated.")
+
+
 def check_deadline(deadline: date | None, today: date) -> Check:
     if deadline is None:
         return Check("deadline", "unknown", "Deadline not verified.")
@@ -74,12 +90,13 @@ def check_deadline(deadline: date | None, today: date) -> Check:
 
 def evaluate(profile: dict, requirements: dict, country: str | None, degree_type: str,
              deadline: date | None, today: date) -> tuple[str, list[dict]]:
-    checks = [check_degree(profile, requirements, country, degree_type), check_english(profile, requirements),
+    checks = [check_degree(profile, requirements, country, degree_type), check_international(profile, requirements),
+              check_english(profile, requirements),
               check_gpa(profile, requirements), check_deadline(deadline, today)]
     statuses = [c.status for c in checks]
     if "fail" in statuses:
         overall = "ineligible"
-    elif statuses.count("unknown") >= 3:
+    elif statuses.count("unknown") >= 3:  # of degree, international, english, gpa, deadline
         overall = "insufficient_information"
     elif "unknown" in statuses or "warn" in statuses:
         overall = "potentially_eligible"

@@ -30,6 +30,13 @@ uv run pytest
 
 ## Status
 
+Milestone 3 (funding, eligibility, ranking):
+
+- [x] Program verification: grounded search for official admissions/funding pages, quoted extraction, university/domain checks
+- [x] Deterministic funding classification with US/CA defaults; international-admission, English, GPA, degree and deadline checks
+- [x] Research fit from embeddings of interests vs recent papers; weighted score; exclusions (ineligible, unfunded for you)
+- [x] `POST /api/v1/opportunities/evaluate` (background job), ranked `GET /api/v1/opportunities`, detail with evidence; Opportunities page
+
 Milestone 2 (discovery workflow) in progress:
 
 - [x] Postgres job queue (`SKIP LOCKED`) with retries and stale-lock recovery

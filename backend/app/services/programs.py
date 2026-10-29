@@ -137,7 +137,9 @@ def _department_name(db: Session, professor: Professor) -> str | None:
 
 
 def is_fresh(program: Program | None) -> bool:
-    return bool(program and program.last_verified_at and datetime.now(UTC) - program.last_verified_at < REVERIFY_AFTER)
+    """Recently verified from at least one official page. Default-only programs are always retried."""
+    return bool(program and program.source_ids and program.last_verified_at
+                and datetime.now(UTC) - program.last_verified_at < REVERIFY_AFTER)
 
 
 def find_cached_program(db: Session, university_id: uuid.UUID, department: str | None, degree_type: str) -> Program | None:
@@ -149,11 +151,12 @@ def find_cached_program(db: Session, university_id: uuid.UUID, department: str |
     return program if is_fresh(program) else None
 
 
-def verify_program(db: Session, professor_id: uuid.UUID, degree_type: str, intended_term: str | None) -> ProgramOutcome:
+def verify_program(db: Session, professor_id: uuid.UUID, degree_type: str, intended_term: str | None,
+                   force: bool = False) -> ProgramOutcome:
     professor = db.get(Professor, professor_id)
     university = db.get(University, professor.university_id)
     department = _department_name(db, professor)
-    cached = find_cached_program(db, university.id, department, degree_type)
+    cached = None if force else find_cached_program(db, university.id, department, degree_type)
     if cached:
         return ProgramOutcome(cached.id, "cached")
 
@@ -208,7 +211,8 @@ def verify_program(db: Session, professor_id: uuid.UUID, degree_type: str, inten
     program.source_ids = [str(s.id) for s, _, _ in accepted]
     program.requirements_json = {
         "english": lists["english"], "pte_accepted": verified.get("pte_accepted"),
-        "minimum_gpa": verified.get("minimum_gpa"), "requires_masters_for_phd": verified.get("requires_masters_for_phd"),
+        "minimum_gpa": verified.get("minimum_gpa"),
+        "international_applicants_accepted": verified.get("international_applicants_accepted"), "requires_masters_for_phd": verified.get("requires_masters_for_phd"),
         "supervisor_required": verified.get("supervisor_required_before_admission"),
         "deadline_term": verified.get("deadline_term"), "prerequisites": lists["prerequisites"],
         "warnings": [w for _, ex, _ in accepted for w in ex.warnings], "pages": pages,

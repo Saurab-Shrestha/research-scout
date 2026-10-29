@@ -1,4 +1,4 @@
-VERSION = "program-extraction-v1"
+VERSION = "program-extraction-v2"
 
 SYSTEM = """\
 Extract graduate admissions and funding facts from the supplied official page.
@@ -19,6 +19,9 @@ Rules:
   students explicitly.
 - application_deadline: YYYY-MM-DD only when an exact date is stated; set deadline_term to the
   intake it applies to when stated.
+- international_applicants_accepted: "no" only if the page says international applicants are not
+  admitted or considered for this program; "yes" if it explicitly welcomes them; otherwise null.
+  This is about admission, separate from funding_for_international_students.
 - english_tests: one entry per test with its stated minimum overall score.
 - pte_accepted: "yes" if PTE Academic is listed as accepted, "no" if the page lists accepted tests
   and PTE is not among them, otherwise null.

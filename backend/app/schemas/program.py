@@ -31,6 +31,7 @@ class ProgramExtraction(BaseModel):
     deadline_term: Claim  # e.g. "Fall 2027"
     english_tests: list[EnglishRequirement]
     pte_accepted: Claim  # "yes" | "no"
+    international_applicants_accepted: Claim  # "yes" | "no"
     minimum_gpa: Claim  # as stated, e.g. "3.0/4.0"
     requires_masters_for_phd: Claim  # "yes" | "no"
     supervisor_required_before_admission: Claim  # "yes" | "no"

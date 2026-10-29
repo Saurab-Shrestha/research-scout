@@ -23,7 +23,8 @@ def initial_state(job: ResearchJob) -> dict:
     data = job.input_json
     if job.job_type == "evaluation":
         return {"job_id": str(job.id), "professor_ids": data.get("professor_ids") or [],
-                "degree_types": data.get("degree_types") or ["phd", "thesis_masters"]}
+                "degree_types": data.get("degree_types") or ["phd", "thesis_masters"],
+                "force": bool(data.get("force"))}
     return {
         "job_id": str(job.id),
         "query": data.get("query"),

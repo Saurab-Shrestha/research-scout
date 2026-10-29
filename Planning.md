@@ -1288,6 +1288,8 @@ If time is limited, keep the order but defer visual polish, sophisticated search
 | ADR-08 | Human-in-the-loop for all outbound content                    | High-consequence, reputational actions                             | Never for MVP                                  |
 | ADR-09 | Provider-agnostic LLM adapter                                 | Compare models in evals; avoid lock-in                             | —                                              |
 | ADR-10 | Social media (LinkedIn, Facebook) via user-initiated ingestion only; treated as leads | Platform terms forbid scraping; posts are unverified and often stale | A platform offers an official API covering this use |
+| ADR-11 | Separate `programs` table; funding assessed per program, opportunities = professor × program | Funding, deadlines and English rules are program-level and shared by colleagues; avoids duplicating assessments per professor | Per-professor funding (e.g. RA offers) needs its own record |
+| ADR-12 | Research fit via Gemini embeddings stored as JSONB, compared in Python; similarity mapped 0.78–0.90 → 0–100, best interest weighted 80% | Small data volume; calibrated on real professors so loosely related work does not score high | > ~100k publications, or rankings that disagree with manual review |
 
 ---
 

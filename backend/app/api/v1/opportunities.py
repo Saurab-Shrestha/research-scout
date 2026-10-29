@@ -18,6 +18,7 @@ router = APIRouter(prefix="/opportunities", tags=["opportunities"])
 class EvaluateRequest(BaseModel):
     professor_ids: list[uuid.UUID] | None = None  # default: every professor with a known university
     degree_types: list[Literal["phd", "thesis_masters", "course_masters"]] = ["phd", "thesis_masters"]
+    force: bool = False  # re-verify programs even if checked within the last 30 days
 
 
 class OpportunityOut(BaseModel):
