@@ -188,3 +188,36 @@ def test_evaluation_job_verifies_program_and_ranks(client, monkeypatch):
 
 def test_evaluate_requires_profile(client):
     assert client.post("/api/v1/opportunities/evaluate", json={}).status_code == 422
+
+
+def test_reverify_with_new_program_name_keeps_one_opportunity(client, monkeypatch):
+    prof_id = seed()
+    monkeypatch.setattr(ingestion, "fetch_public_page", lambda url: FetchResult(url, 200, "text/plain", ADMISSIONS))
+    monkeypatch.setattr(llm, "embed", lambda texts: [[1.0, 0.0] for _ in texts])
+    for i, name in enumerate(["PhD in Computer Science", "Doctor of Philosophy (PhD)"]):
+        ex = program_extraction()
+        ex.program_name = claim(name, "Graduate Admissions")
+        monkeypatch.setattr(llm, "search_text", lambda prompt, model, i=i: (f"https://grad.example.edu/phd{i}", []))
+        monkeypatch.setattr(llm, "generate_structured", lambda *a, ex=ex: llm.LLMResult(ex, "m", 1, 1))
+        with SessionLocal() as db:
+            job = ResearchJob(job_type="evaluation", status="running", attempts=1,
+                              input_json={"professor_ids": [str(prof_id)], "degree_types": ["phd"], "force": True})
+            db.add(job)
+            db.commit()
+        run_job({"evaluation": evaluation.build_graph(InMemorySaver())}, job.id)
+    ranked = client.get("/api/v1/opportunities").json()
+    assert len(ranked) == 1 and ranked[0]["program"] == "Doctor of Philosophy (PhD)"
+
+
+def test_network_errors_become_llm_errors(monkeypatch):
+    import httpx
+    import pytest
+
+    class Boom:
+        class models:
+            @staticmethod
+            def generate_content(**kwargs):
+                raise httpx.RemoteProtocolError("Server disconnected")
+    monkeypatch.setattr(llm, "_client", lambda: Boom)
+    with pytest.raises(llm.LLMError, match="RemoteProtocolError"):
+        llm.search_text("q", "m")

@@ -194,7 +194,8 @@ class FundingAssessment(Entity, Base):
 class Opportunity(Entity, Base):
     """Supervision route: a professor within a program."""
     __tablename__ = "opportunities"
-    __table_args__ = (UniqueConstraint("professor_id", "program_id"),)
+    # One route per professor and degree; re-verification repoints it at the latest program row.
+    __table_args__ = (UniqueConstraint("professor_id", "degree_type"),)
 
     professor_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("professors.id"))
     program_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("programs.id"))

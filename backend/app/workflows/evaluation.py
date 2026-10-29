@@ -44,8 +44,8 @@ def verify_programs(state: EvaluationState) -> dict:
         for prof_id in state["professor_ids"]:
             professor = db.get(Professor, prof_id)
             for degree in state["degree_types"]:
-                existing = db.scalars(select(Opportunity).join(Program).where(
-                    Opportunity.professor_id == professor.id, Program.degree_type == degree)).first()
+                existing = db.scalars(select(Opportunity).where(
+                    Opportunity.professor_id == professor.id, Opportunity.degree_type == degree)).first()
                 if existing and not state.get("force") and programs.is_fresh(db.get(Program, existing.program_id)):
                     opportunity_ids.append(str(existing.id))
                     continue  # verified recently; also makes resumed runs skip finished work
@@ -57,12 +57,13 @@ def verify_programs(state: EvaluationState) -> dict:
                     errors.append({"professor_id": prof_id, "degree": degree, "error": str(e)})
                     continue
                 opp = db.scalars(select(Opportunity).where(Opportunity.professor_id == professor.id,
-                                                           Opportunity.program_id == outcome.program_id)).first()
+                                                           Opportunity.degree_type == degree)).first()
                 if opp is None:
                     opp = Opportunity(professor_id=professor.id, program_id=outcome.program_id, degree_type=degree,
                                       title=f"{DEGREE_TITLES[degree]} with {professor.name}")
                     db.add(opp)
-                    db.commit()
+                opp.program_id = outcome.program_id
+                db.commit()
                 opportunity_ids.append(str(opp.id))
                 emit(state["job_id"], "program", f"{professor.name} · {degree}: {outcome.status}", pages=outcome.pages)
     return {"opportunity_ids": opportunity_ids, "errors": errors}
