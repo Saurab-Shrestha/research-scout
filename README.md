@@ -17,10 +17,9 @@ uv run alembic upgrade head
 ## Run
 
 ```bash
-uv run uvicorn app.main:app --app-dir backend --reload
+uv run uvicorn app.main:app --app-dir backend --reload   # API on :8000, docs at /docs
+uv run streamlit run frontend/app.py                      # UI on :8501
 ```
-
-API docs: http://localhost:8000/docs
 
 ## Test
 
@@ -39,5 +38,5 @@ Milestone 1 in progress:
 - [x] Gemini structured extraction with field-level evidence (`POST /api/v1/sources/{id}/extract`); quotes checked against page text
 - [x] Professor records (`GET /api/v1/professors`, `GET /api/v1/professors/{id}` with evidence)
 - [ ] Real-model eval on fixture pages (Vertex AI express: `GOOGLE_GENAI_USE_VERTEXAI=true` + `GOOGLE_API_KEY`)
-- [ ] OpenAlex identity resolution and recent publications
-- [ ] Streamlit profile view
+- [x] OpenAlex identity resolution and recent publications (`POST /api/v1/professors/{id}/refresh`)
+- [x] Streamlit UI: add faculty URL or social post, professor detail (research, publications, evidence), candidate profile
