@@ -26,6 +26,7 @@ class ExtractionOutcome:
     unverified_fields: int
     input_tokens: int
     output_tokens: int
+    rejection: str | None = None  # why the page was not attached to the expected professor
 
 
 def _norm(text: str) -> str:
@@ -56,7 +57,46 @@ def _get_or_create(db: Session, model, lookup: dict, **defaults):
     return row
 
 
-def _upsert_professor(db: Session, source: Source, ex: PageExtraction, ok) -> Professor:
+def _same_university(page_name: str, university: University) -> bool:
+    page = _norm(page_name).removeprefix("the ")
+    for known in [university.name, *(university.aliases or [])]:
+        known = _norm(known).removeprefix("the ")
+        if known in page or page in known:
+            return True
+    return False
+
+
+def _ensure_aliases(db: Session, university: University) -> None:
+    if university.aliases is None and university.openalex_id:
+        from app.services import openalex  # local import keeps extraction usable without network in tests
+        try:
+            university.aliases = openalex.institution_aliases(university.openalex_id)
+        except openalex.ScholarlyError:
+            return  # retry next time; comparison falls back to the display name
+        db.flush()
+
+
+def check_expected_professor(db: Session, professor: Professor, ex: PageExtraction, ok) -> str | None:
+    """Return a rejection reason if the page describes someone other than `professor`."""
+    from app.services.publications import _name_key  # local import: publications imports ingestion
+
+    if not ok(ex.professor_name):
+        return "page does not name a single professor"
+    if _name_key(ex.professor_name.value) != _name_key(professor.name):
+        return f"page is about {ex.professor_name.value!r}, not {professor.name!r}"
+    university = db.get(University, professor.university_id) if professor.university_id else None
+    if university and ok(ex.university):
+        _ensure_aliases(db, university)
+    if university and ok(ex.university) and not _same_university(ex.university.value, university):
+        return f"page says {ex.university.value!r}, OpenAlex says {university.name!r}"
+    return None
+
+
+def _upsert_professor(db: Session, source: Source, ex: PageExtraction, ok,
+                      existing: Professor | None = None) -> Professor:
+    if existing is not None:
+        return _update_from_page(db, existing, source, ex, ok)
+
     university = department = None
     if ok(ex.university):
         name = ex.university.value.strip()
@@ -73,6 +113,25 @@ def _upsert_professor(db: Session, source: Source, ex: PageExtraction, ok) -> Pr
     professor.name = ex.professor_name.value.strip()
     professor.university_id = university.id if university else professor.university_id
     professor.department_id = department.id if department else professor.department_id
+    return _apply_page_fields(professor, ex, ok)
+
+
+def _update_from_page(db: Session, professor: Professor, source: Source, ex: PageExtraction, ok) -> Professor:
+    """Attach a verified faculty page to a professor found through OpenAlex.
+
+    Keeps the OpenAlex university (avoids near-duplicate university rows from page wording).
+    """
+    url_owner = db.scalars(select(Professor).where(Professor.faculty_url == source.canonical_url)).first()
+    if professor.faculty_url is None and url_owner is None:
+        professor.faculty_url = source.canonical_url
+    if professor.university_id and ok(ex.department):
+        professor.department_id = _get_or_create(
+            db, Department, {"university_id": professor.university_id, "name": ex.department.value.strip()},
+        ).id
+    return _apply_page_fields(professor, ex, ok)
+
+
+def _apply_page_fields(professor: Professor, ex: PageExtraction, ok) -> Professor:
     if ok(ex.professor_title):
         professor.title = ex.professor_title.value
     if ok(ex.institutional_email):
@@ -86,7 +145,7 @@ def _upsert_professor(db: Session, source: Source, ex: PageExtraction, ok) -> Pr
     return professor
 
 
-def extract_source(db: Session, source_id: uuid.UUID) -> ExtractionOutcome:
+def extract_source(db: Session, source_id: uuid.UUID, expected_professor_id: uuid.UUID | None = None) -> ExtractionOutcome:
     source = db.get(Source, source_id)
     if source is None:
         raise LookupError(f"source {source_id} not found")
@@ -105,9 +164,12 @@ def extract_source(db: Session, source_id: uuid.UUID) -> ExtractionOutcome:
         return _is_supported(claim, page)
 
     # Social posts and alert emails are leads (§7.3): never create entities from them directly.
-    professor = None
-    if source.source_type == "web_page" and ex.page_kind in PROFILE_PAGE_KINDS and ok(ex.professor_name):
-        professor = _upsert_professor(db, source, ex, ok)
+    professor = rejection = None
+    expected = db.get(Professor, expected_professor_id) if expected_professor_id else None
+    if expected is not None:
+        rejection = check_expected_professor(db, expected, ex, ok)
+    if source.source_type == "web_page" and ex.page_kind in PROFILE_PAGE_KINDS and ok(ex.professor_name) and not rejection:
+        professor = _upsert_professor(db, source, ex, ok, existing=expected)
 
     # Re-running extraction replaces this extractor version's evidence for the source.
     db.execute(delete(Evidence).where(
@@ -145,4 +207,5 @@ def extract_source(db: Session, source_id: uuid.UUID) -> ExtractionOutcome:
         unverified_fields=unverified,
         input_tokens=result.input_tokens,
         output_tokens=result.output_tokens,
+        rejection=rejection,
     )

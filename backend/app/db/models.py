@@ -42,6 +42,7 @@ class University(Entity, Base):
     graduate_admissions_url: Mapped[str | None]
     openalex_id: Mapped[str | None] = mapped_column(unique=True)
     ror_id: Mapped[str | None] = mapped_column(unique=True)
+    aliases: Mapped[list | None]  # acronyms and alternative names from OpenAlex, e.g. ["MIT"]
 
 
 class Department(Entity, Base):

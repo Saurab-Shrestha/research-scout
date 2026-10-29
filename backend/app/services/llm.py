@@ -51,3 +51,17 @@ def generate_structured[T: BaseModel](system: str, user: str, schema: type[T], m
         input_tokens=(usage.prompt_token_count or 0) if usage else 0,
         output_tokens=(usage.candidates_token_count or 0) if usage else 0,
     )
+
+
+def search_text(prompt: str, model: str) -> tuple[str, list[str]]:
+    """Ask Gemini with Google Search grounding. Returns (answer text, search queries it ran).
+
+    Grounded searches are billed separately from tokens; callers should cap how often this runs.
+    """
+    response = _client().models.generate_content(
+        model=model,
+        contents=prompt,
+        config=types.GenerateContentConfig(tools=[types.Tool(google_search=types.GoogleSearch())], temperature=0),
+    )
+    metadata = response.candidates[0].grounding_metadata if response.candidates else None
+    return response.text or "", list((metadata.web_search_queries or []) if metadata else [])

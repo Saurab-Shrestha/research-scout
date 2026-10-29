@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session
 
 from app.db.models import Evidence, Professor, ProfessorPublication, Publication, University
 from app.db.session import get_db
-from app.services import publications
+from app.services import page_finder, publications
+from app.services.llm import LLMError
 from app.services.openalex import ScholarlyError
 
 router = APIRouter(prefix="/professors", tags=["professors"])
@@ -120,3 +121,16 @@ def refresh_professor(professor_id: uuid.UUID, db: Session = Depends(get_db)):
         "duplicate_of": str(outcome.duplicate_of) if outcome.duplicate_of else None,
         "candidates": outcome.candidates,
     }
+
+
+@router.post("/{professor_id}/find-page")
+def find_page(professor_id: uuid.UUID, db: Session = Depends(get_db)):
+    """Search for the professor's official page and attach it only if extraction confirms identity."""
+    try:
+        outcome = page_finder.find_faculty_page(db, professor_id)
+    except LookupError:
+        raise HTTPException(404, "Professor not found")
+    except LLMError as e:
+        raise HTTPException(502, str(e))
+    return {"status": outcome.status, "faculty_url": outcome.faculty_url, "attempts": outcome.attempts,
+            "search_queries": outcome.search_queries, "answer": outcome.answer}

@@ -36,7 +36,7 @@ Milestone 2 (discovery workflow) in progress:
 - [x] LangGraph discovery graph with Postgres checkpointer; failed jobs resume from the last completed node
 - [x] Scholarly-first discovery: OpenAlex topics → active US/CA authors → professors → recent publications
 - [x] `POST/GET /api/v1/research-jobs`, `GET /api/v1/research-jobs/{id}/events`; Discover page in the UI
-- [ ] Faculty page discovery (needs a search API) to verify titles, affiliations and contact details
+- [x] Faculty page discovery: Gemini + Google Search proposes URLs; each is fetched, extracted and accepted only if name and university match (`POST /api/v1/professors/{id}/find-page`)
 - [ ] MCP servers wrapping the discovery and scholarly tools
 - [ ] LLM search/topic planner (§13.1)
 

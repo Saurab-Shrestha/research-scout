@@ -159,3 +159,8 @@ def get_authors(author_ids: list[str]) -> list[dict]:
             "filter": f"ids.openalex:{'|'.join(batch)}", "per_page": 100, "select": AUTHOR_FIELDS,
         })["results"]
     return authors
+
+
+def institution_aliases(institution_id: str) -> list[str]:
+    inst = _get(f"/institutions/{institution_id}", {"select": "display_name_acronyms,display_name_alternatives"})
+    return list(dict.fromkeys((inst.get("display_name_acronyms") or []) + (inst.get("display_name_alternatives") or [])))

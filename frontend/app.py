@@ -76,9 +76,19 @@ def professor_detail(prof_id: str):
     st.caption(" · ".join(filter(None, [p["university"], p["title"], p["email"]])))
     if p["faculty_url"]:
         st.markdown(f"[Faculty page]({p['faculty_url']})")
-    if st.button("Refresh publications"):
+    refresh_col, page_col = st.columns(2)
+    if refresh_col.button("Refresh publications"):
         if call("POST", f"/professors/{prof_id}/refresh"):
             st.rerun()
+    if page_col.button("Find faculty page", disabled=bool(p["faculty_url"])):
+        with st.spinner("Searching and verifying candidate pages (up to a minute)…"):
+            found = call("POST", f"/professors/{prof_id}/find-page")
+        if found:
+            for a in found["attempts"]:
+                st.write(f"`{a['result']}` {a['url']}")
+            if found["status"] == "found":
+                st.rerun()
+            st.warning("No page could be verified for this professor.")
 
     research, pubs, sources = st.tabs(["Research", "Publications", "Sources"])
     with research:
@@ -206,7 +216,9 @@ def job_progress():
             if result.get("professor_ids"):
                 profs = call("GET", "/professors", params={"ids": result["professor_ids"], "limit": 200}) or []
                 st.dataframe(
-                    [{"professor": p["name"], "university": p["university"], "openalex": p["openalex_id"]} for p in profs],
+                    [{"professor": p["name"], "university": p["university"], "title": p["title"],
+                      "faculty page": p["faculty_url"]} for p in profs],
+                    column_config={"faculty page": st.column_config.LinkColumn()},
                     width="stretch", hide_index=True,
                 )
 
@@ -226,6 +238,7 @@ def discover_page():
                                  format_func={"phd": "PhD", "thesis_masters": "Thesis master's",
                                               "course_masters": "Course-based master's"}.get)
         max_results = st.slider("Max professors", 5, 100, 30, step=5)
+        find_pages = st.checkbox("Find and verify faculty pages (about 1 minute per professor)", value=True)
         if st.form_submit_button("Start search"):
             if not areas and not query.strip():
                 st.error("Pick a research area or enter a topic.")
@@ -233,7 +246,7 @@ def discover_page():
                 st.error("Pick at least one country.")
             elif call("POST", "/research-jobs", json={
                 "research_areas": areas, "query": query or None, "countries": countries,
-                "degree_types": degrees, "max_results": max_results,
+                "degree_types": degrees, "max_results": max_results, "find_pages": find_pages,
             }):
                 st.success("Search queued. The worker picks it up within a few seconds.")
     st.subheader("Recent searches")

@@ -80,7 +80,7 @@ def make_job(**inputs) -> ResearchJob:
     with SessionLocal() as db:
         job = ResearchJob(job_type="discovery", input_json={
             "query": None, "countries": ["US", "CA"], "research_areas": ["quantum_computing"],
-            "max_results": 10} | inputs, status="running", attempts=1)
+            "max_results": 10, "find_pages": False} | inputs, status="running", attempts=1)
         db.add(job)
         db.commit()
         return job

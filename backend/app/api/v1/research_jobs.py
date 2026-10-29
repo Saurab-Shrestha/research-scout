@@ -22,6 +22,7 @@ class DiscoveryRequest(BaseModel):
     funding_priority: Literal["full_funding", "any"] = "full_funding"
     seed_urls: list[str] = []
     max_results: int = Field(30, ge=1, le=100)
+    find_pages: bool = True  # search for and verify faculty pages (Gemini + Google Search)
 
 
 class JobOut(BaseModel):

@@ -11,7 +11,7 @@ from langgraph.graph import END, START, StateGraph
 
 from app.db.models import Professor, ProfessorPublication
 from app.db.session import SessionLocal
-from app.services import discovery, openalex, publications
+from app.services import discovery, llm, openalex, page_finder, publications
 from app.services.jobs import emit
 
 ALLOWED_COUNTRIES = {"US", "CA"}
@@ -25,11 +25,13 @@ class DiscoveryState(TypedDict):
     countries: list[str]
     research_areas: list[str]
     max_results: int
+    find_pages: NotRequired[bool]
     topic_ids: NotRequired[list[str]]
     author_counts: NotRequired[dict[str, int]]
     professor_ids: NotRequired[list[str]]
     new_professor_ids: NotRequired[list[str]]
     skipped: NotRequired[list[dict]]
+    pages: NotRequired[dict[str, str]]
     errors: NotRequired[list[dict]]
     result_summary: NotRequired[dict]
 
@@ -101,12 +103,35 @@ def enrich_publications(state: DiscoveryState) -> dict:
     return {"errors": errors}
 
 
+def find_faculty_pages(state: DiscoveryState) -> dict:
+    """Attach verified faculty pages to professors that have none. Re-runs skip ones already found."""
+    pages, errors = {}, list(state.get("errors", []))
+    with SessionLocal() as db:
+        for prof_id in state["professor_ids"]:
+            professor = db.get(Professor, prof_id)
+            if professor.faculty_url:
+                pages[prof_id] = "existing"
+                continue
+            try:
+                outcome = page_finder.find_faculty_page(db, professor.id)
+            except llm.LLMError as e:
+                errors.append({"professor_id": prof_id, "error": str(e)})
+                continue
+            pages[prof_id] = outcome.status
+            emit(state["job_id"], "page", f"{professor.name}: {outcome.status}",
+                 url=outcome.faculty_url, attempts=outcome.attempts)
+    found = sum(v != "not_found" for v in pages.values())
+    emit(state["job_id"], "pages", f"Faculty pages verified for {found}/{len(pages)} professors")
+    return {"pages": pages, "errors": errors}
+
+
 def finalize(state: DiscoveryState) -> dict:
     summary = {
         "topics": len(state.get("topic_ids", [])),
         "professors": len(state.get("professor_ids", [])),
         "new_professors": len(state.get("new_professor_ids", [])),
         "skipped": len(state.get("skipped", [])),
+        "faculty_pages": sum(v != "not_found" for v in state.get("pages", {}).values()),
         "errors": state.get("errors", []),
         "professor_ids": state.get("professor_ids", []),
     }
@@ -116,13 +141,16 @@ def finalize(state: DiscoveryState) -> dict:
 
 def build_graph(checkpointer):
     g = StateGraph(DiscoveryState)
-    for node in (validate_request, find_topics, discover_authors, persist_candidates, enrich_publications, finalize):
+    for node in (validate_request, find_topics, discover_authors, persist_candidates, enrich_publications,
+                 find_faculty_pages, finalize):
         g.add_node(node.__name__, node)
     g.add_edge(START, "validate_request")
     g.add_edge("validate_request", "find_topics")
     g.add_conditional_edges("find_topics", lambda s: "discover_authors" if s["topic_ids"] else "finalize")
     g.add_edge("discover_authors", "persist_candidates")
     g.add_edge("persist_candidates", "enrich_publications")
-    g.add_edge("enrich_publications", "finalize")
+    g.add_conditional_edges("enrich_publications",
+                            lambda s: "find_faculty_pages" if s.get("find_pages", True) else "finalize")
+    g.add_edge("find_faculty_pages", "finalize")
     g.add_edge("finalize", END)
     return g.compile(checkpointer=checkpointer)
