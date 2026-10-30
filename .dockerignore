@@ -5,3 +5,5 @@
 backend/evals/results
 backups
 .git
+web/node_modules
+web/dist

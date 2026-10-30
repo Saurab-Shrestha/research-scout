@@ -60,3 +60,15 @@ def test_ingest_url_is_idempotent(client, monkeypatch):
 def test_ingest_rejects_private_url(client):
     response = client.post("/api/v1/sources/ingest", json={"url": "http://127.0.0.1/admin"})
     assert response.status_code == 400
+
+
+def test_web_app_served_with_spa_fallback(client, tmp_path, monkeypatch):
+    from app import main
+    (tmp_path / "assets").mkdir()
+    (tmp_path / "index.html").write_text("<div id=root></div>")
+    (tmp_path / "assets" / "app.js").write_text("console.log(1)")
+    monkeypatch.setattr(main, "WEB_DIST", tmp_path)
+    assert client.get("/tracker").text == "<div id=root></div>"
+    assert client.get("/assets/app.js").text == "console.log(1)"
+    assert client.get("/api/v1/nope").status_code == 404
+    assert client.get("/..%2F..%2Fetc%2Fpasswd").text == "<div id=root></div>"

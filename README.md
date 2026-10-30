@@ -4,7 +4,7 @@ Personal tool for finding funded AI/ML and quantum computing research positions 
 
 ## Setup
 
-Requires Python 3.12 (managed by `uv`) and a local PostgreSQL.
+Requires Python 3.12 (managed by `uv`), Node 24 and a local PostgreSQL.
 
 ```bash
 uv sync
@@ -19,14 +19,17 @@ uv run alembic upgrade head
 ```bash
 uv run uvicorn app.main:app --app-dir backend --reload   # API on :8000, docs at /docs
 (cd backend && uv run python -m app.worker)               # job worker (discovery searches)
-uv run streamlit run frontend/app.py                      # UI on :8501
+(cd web && npm install && npm run dev)                    # web app on :5173 (proxies /api to :8000)
 ```
+
+For a single server, build the web app once (`cd web && npm run build`); the API then serves it at
+http://localhost:8000.
 
 ### Or with Docker
 
 ```bash
 # .env needs POSTGRES_PASSWORD and the API keys
-docker compose up --build -d     # db, migrations, API :8000, worker, UI :8501 (localhost only)
+docker compose up --build -d     # db, migrations, worker, API + web app on :8000 (localhost only)
 ```
 
 ## Backups
@@ -50,6 +53,15 @@ uv run pytest
 ```
 
 ## Status
+
+Web app (`web/`, React + TypeScript + Tailwind + shadcn/ui), replacing the Streamlit UI:
+
+- [x] Dashboard: summary, next actions, deadline timeline, top matches, and what's blocking you
+- [x] Opportunities: filters kept in the URL, sortable table, side panel with score breakdown, quoted evidence and eligibility checks
+- [x] Tracker: kanban with pointer and keyboard drag, card menu, editor with history
+- [x] Draft studio: versions, edit, copy, open in mail app, mark as sent, professor's papers alongside
+- [x] Discover: start discovery and evaluation jobs with live progress; add leads by URL or pasted post
+- [x] Profile editor; light and dark themes; mobile layout
 
 Milestone 6 (hardening):
 
@@ -96,4 +108,4 @@ Milestone 1 (complete except fixture evals):
 - [x] Professor records (`GET /api/v1/professors`, `GET /api/v1/professors/{id}` with evidence)
 - [x] Real-model eval on fixture pages: `cd backend && uv run python -m evals.run` (rebuild fixtures from stored pages with `python -m evals.build_fixtures`)
 - [x] OpenAlex identity resolution and recent publications (`POST /api/v1/professors/{id}/refresh`)
-- [x] Streamlit UI: add faculty URL or social post, professor detail (research, publications, evidence), candidate profile
+- [x] UI: add faculty URL or social post, professor details, candidate profile (now in the web app)

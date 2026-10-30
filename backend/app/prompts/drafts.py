@@ -1,4 +1,4 @@
-VERSION = "drafts-v1"
+VERSION = "drafts-v2"
 
 _SHARED = """\
 Facts about the candidate come only from CANDIDATE. Facts about the professor, lab and program come
@@ -20,6 +20,7 @@ Write a cold email from the candidate to the professor, at most 180 words in the
   admission, ask whether the professor is taking students for that term and whether funding is
   available. For a US PhD, ask whether the professor expects to take students.
 - Mention that a CV is attached. Sign with the candidate's name only.
+- Format: greeting line, then 2 or 3 short paragraphs, then the sign-off, each separated by a blank line.
 """
 
 SOP_SYSTEM = _SHARED + """

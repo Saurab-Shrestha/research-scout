@@ -48,7 +48,7 @@ A personal graduate-research discovery and application platform. It finds releva
 
 > Discover broadly, verify against primary sources, rank transparently, and draft only from evidence.
 
-**Stack:** FastAPI · Streamlit · LangGraph · MCP (Python SDK) · PostgreSQL (+ pgvector) · an LLM with reliable structured output and tool calling.
+**Stack:** FastAPI · React web app · LangGraph · MCP (Python SDK) · PostgreSQL (+ pgvector) · an LLM with reliable structured output and tool calling.
 
 ---
 
@@ -196,7 +196,7 @@ These are engineering targets to validate, not claims of achieved performance.
 
 ```mermaid
 flowchart TB
-    User([User]) --> UI[Streamlit UI]
+    User([User]) --> UI[React web app]
     UI -->|REST /api/v1| API[FastAPI modular monolith]
     API --> DB[(PostgreSQL<br/>+ pgvector<br/>+ LangGraph checkpoints)]
     API -->|enqueue job| DB
@@ -211,7 +211,7 @@ flowchart TB
 
 | Layer                   | Responsibility                                                                       |
 | ----------------------- | ------------------------------------------------------------------------------------ |
-| Streamlit               | Discovery, research profiles, shortlist, tracker, draft studio. Talks only to API.   |
+| React web app           | Discovery, research profiles, shortlist, tracker, draft studio. Talks only to API.   |
 | FastAPI                 | REST API, validation, persistence, job creation and status.                          |
 | Worker + LangGraph      | Stateful workflows, conditional routing, retries, human review, checkpointing.       |
 | MCP tool servers        | Web discovery, page retrieval, scholarly APIs, document parsing, workspace access.   |
@@ -224,7 +224,7 @@ flowchart TB
 
 | Layer                 | Choice                                                     | Notes                                                        |
 | --------------------- | ---------------------------------------------------------- | ------------------------------------------------------------ |
-| Frontend              | Streamlit                                                  | Fast to build; replace only if UX outgrows it                |
+| Frontend              | React + TypeScript (Vite, Tailwind, shadcn/ui)             | Started on Streamlit; replaced once the tracker and dashboard outgrew it |
 | Backend               | FastAPI + Pydantic v2                                      |                                                              |
 | Agent workflow        | LangGraph                                                  | Postgres checkpointer (`langgraph-checkpoint-postgres`)      |
 | Tool interoperability | MCP official Python SDK (pinned)                           | stdio transport in MVP; Streamable HTTP later if needed       |
@@ -500,7 +500,7 @@ University and professor browsing may share one UI page, but backend resources s
 }
 ```
 
-Discovery runs asynchronously. Streamlit polls the job endpoint or consumes events; it never holds a long HTTP request open.
+Discovery runs asynchronously. The web app polls the job endpoint or consumes events; it never holds a long HTTP request open.
 
 ### 9.2 Example — email draft request
 
@@ -968,7 +968,7 @@ All retrieved content is untrusted input.
 | Duplicate jobs                | Idempotency keys + DB unique constraints                                                                      |
 | Invalid LLM output            | Pydantic validation; bounded retries                                                                          |
 | Unsupported claims            | Evidence IDs required for high-impact fields                                                                  |
-| Secret exposure               | Secrets in env vars / secret manager; never sent to Streamlit clients                                        |
+| Secret exposure               | Secrets in env vars / secret manager; never sent to the browser                                        |
 | Unintended actions            | Research tools read-only by default; human approval for external actions                                     |
 | Data loss                     | Scheduled `pg_dump` backups; persistent checkpoints                                                           |
 | Excessive scraping            | `robots.txt` compliance, per-domain rate limits, timeouts, concurrency caps, identifying User-Agent           |
@@ -1090,14 +1090,14 @@ research-scout/
 **Dependency direction:**
 
 ```text
-Streamlit ──► FastAPI routes ──► services ──► repositories ──► PostgreSQL
+Web app ──► FastAPI routes ──► services ──► repositories ──► PostgreSQL
                                     │
                                     └──► workflows (LangGraph nodes) ──► MCP adapters ──► MCP servers
 ```
 
 - Routes call services; services call repositories and workflow entry points.
 - Graph nodes call services and MCP adapters; adapters validate inputs/outputs.
-- Repositories own persistence. Streamlit never touches PostgreSQL directly.
+- Repositories own persistence. The web app never touches PostgreSQL directly.
 
 ---
 
@@ -1226,7 +1226,7 @@ Collect the 30-page fixture corpus and expected outputs.
 5. Validate and attach evidence to each field.
 6. Resolve identity via OpenAlex; fetch recent publications.
 7. Save professor, publications and evidence.
-8. Display profile and sources in Streamlit.
+8. Display profile and sources in the web app.
 
 **Exit:** passes extraction and identity targets on faculty-page fixtures; re-ingesting creates no duplicates.
 
@@ -1318,7 +1318,7 @@ If time is limited, keep the order but defer visual polish, sophisticated search
 - CSRankings — [Faculty data (GitHub)](https://github.com/emeryberger/CSrankings)
 - pgvector — [GitHub](https://github.com/pgvector/pgvector)
 - FastAPI — [Documentation](https://fastapi.tiangolo.com/)
-- Streamlit — [Documentation](https://docs.streamlit.io/)
+- shadcn/ui: [Documentation](https://ui.shadcn.com/docs)
 - Anthropic — [Building effective agents](https://www.anthropic.com/research/building-effective-agents)
 
 ---
