@@ -66,6 +66,6 @@ Milestone 1 (complete except fixture evals):
 - [x] Source ingestion (`POST /api/v1/sources/ingest`) for URLs and pasted posts, deduplicated
 - [x] Gemini structured extraction with field-level evidence (`POST /api/v1/sources/{id}/extract`); quotes checked against page text
 - [x] Professor records (`GET /api/v1/professors`, `GET /api/v1/professors/{id}` with evidence)
-- [ ] Real-model eval on fixture pages (Vertex AI express: `GOOGLE_GENAI_USE_VERTEXAI=true` + `GOOGLE_API_KEY`)
+- [x] Real-model eval on fixture pages: `cd backend && uv run python -m evals.run` (rebuild fixtures from stored pages with `python -m evals.build_fixtures`)
 - [x] OpenAlex identity resolution and recent publications (`POST /api/v1/professors/{id}/refresh`)
 - [x] Streamlit UI: add faculty URL or social post, professor detail (research, publications, evidence), candidate profile
