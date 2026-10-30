@@ -274,7 +274,7 @@ def opportunity_detail(opp_id: str):
     if st.button("Save to tracker", key=f"track-{opp_id}"):
         if call("POST", "/applications", json={"opportunity_id": opp_id}):
             st.success("Saved. See the Tracker page for the suggested next step.")
-    research, funding, elig, evidence = st.tabs(["Research fit", "Funding", "Eligibility", "Evidence"])
+    research, funding, elig, evidence, drafts = st.tabs(["Research fit", "Funding", "Eligibility", "Evidence", "Drafts"])
     with research:
         for m in d["explanation"].get("research_matches", []):
             st.markdown(f"**{m['interest']}** ↔ _{m['paper']}_ ({m['year']}) · similarity {m['similarity']}")
@@ -291,6 +291,28 @@ def opportunity_detail(opp_id: str):
         st.dataframe(d["program_evidence"], width="stretch", hide_index=True)
         for p in d["requirements"].get("pages", []):
             st.write(f"`{p['result']}` {p['url']}")
+    with drafts:
+        drafts_tab(opp_id)
+
+
+def drafts_tab(opp_id: str):
+    st.caption("Drafts are never sent. Edit, check the warnings, then send from your own email.")
+    left, right = st.columns(2)
+    for col, kind, label in ((left, "email", "Draft email to professor"), (right, "sop_outline", "Draft SOP outline")):
+        if col.button(label, key=f"{kind}-{opp_id}"):
+            with st.spinner("Writing…"):
+                call("POST", f"/opportunities/{opp_id}/drafts", json={"kind": kind})
+    for dr in call("GET", f"/opportunities/{opp_id}/drafts") or []:
+        title = "Email" if dr["kind"] == "email" else "SOP outline"
+        with st.expander(f"{title} · {dr['created_at'][:16].replace('T', ' ')}", expanded=False):
+            for w in dr["warnings"]:
+                st.warning(w)
+            subject = st.text_input("Subject", dr["subject"], key=f"s-{dr['id']}") if dr["kind"] == "email" else None
+            body = st.text_area("Body", dr["body"], height=320, key=f"b-{dr['id']}")
+            if st.button("Save edits", key=f"save-{dr['id']}"):
+                payload = {"body": body} | ({"subject": subject} if subject is not None else {})
+                if call("PATCH", f"/drafts/{dr['id']}", json=payload):
+                    st.success("Saved.")
 
 
 def opportunities_page():

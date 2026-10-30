@@ -30,6 +30,12 @@ uv run pytest
 
 ## Status
 
+Milestone 5 (draft studio):
+
+- [x] Professor email and SOP outline drafts per opportunity (`POST/GET /api/v1/opportunities/{id}/drafts`, `PATCH /api/v1/drafts/{id}`)
+- [x] Grounded in profile, stored papers and verified program facts; citations checked against stored publications; never sent automatically
+- [x] Drafts tab on the opportunity detail with warnings and editable text
+
 Milestone 4 (tracker):
 
 - [x] `applications` with status history, deadlines and suggested next steps (Canada thesis routes: contact supervisor first)

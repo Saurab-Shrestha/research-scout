@@ -237,3 +237,17 @@ class Application(Entity, Base):
     next_action_at: Mapped[date | None]
     notes: Mapped[str] = mapped_column(Text, default="")
     history_json: Mapped[list] = mapped_column(default=list)  # [{at, status, note}]
+
+
+class Draft(Entity, Base):
+    """Generated outreach email or SOP outline for one opportunity; the candidate edits and sends it (Planning F6)."""
+    __tablename__ = "drafts"
+
+    opportunity_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("opportunities.id"), index=True)
+    kind: Mapped[str]  # email | sop_outline
+    subject: Mapped[str | None]
+    body: Mapped[str] = mapped_column(Text)
+    cited_publication_ids: Mapped[list] = mapped_column(default=list)
+    warnings: Mapped[list] = mapped_column(default=list)
+    model: Mapped[str]
+    prompt_version: Mapped[str]
