@@ -1,6 +1,7 @@
 """Thin LLM adapter. Gemini today; keep the signature provider-neutral (ADR-09)."""
 
 import threading
+from collections import Counter
 from dataclasses import dataclass
 from functools import cache, wraps
 
@@ -38,6 +39,24 @@ def _wrap_errors(fn):
 
 _client_lock = threading.Lock()
 
+# ponytail: process-wide meter; correct because a worker runs one job at a time. Key by job if that changes.
+USAGE: Counter = Counter()
+_usage_lock = threading.Lock()
+
+
+def _meter(response, searches: int = 0) -> None:
+    usage = getattr(response, "usage_metadata", None)
+    with _usage_lock:
+        USAGE["input_tokens"] += (usage.prompt_token_count or 0) if usage else 0
+        USAGE["output_tokens"] += (usage.candidates_token_count or 0) if usage else 0
+        USAGE["searches"] += searches
+
+
+def usage_cost(usage: Counter) -> float:
+    return round(usage["input_tokens"] / 1e6 * settings.llm_usd_per_million_input
+                 + usage["output_tokens"] / 1e6 * settings.llm_usd_per_million_output
+                 + usage["searches"] * settings.grounded_search_usd_each, 4)
+
 
 @cache
 def _make_client() -> genai.Client:
@@ -65,6 +84,7 @@ def generate_structured[T: BaseModel](system: str, user: str, schema: type[T], m
             temperature=0,
         ),
     )
+    _meter(response)
     try:
         parsed = schema.model_validate_json(response.text)
     except Exception as e:  # malformed or truncated JSON
@@ -89,6 +109,7 @@ def search_text(prompt: str, model: str) -> tuple[str, list[str]]:
         contents=prompt,
         config=types.GenerateContentConfig(tools=[types.Tool(google_search=types.GoogleSearch())], temperature=0),
     )
+    _meter(response, searches=1)
     metadata = response.candidates[0].grounding_metadata if response.candidates else None
     return response.text or "", list((metadata.web_search_queries or []) if metadata else [])
 

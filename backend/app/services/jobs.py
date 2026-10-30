@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models import JobEvent, ResearchJob
 from app.db.session import SessionLocal
+from app.services import llm
 
 MAX_ATTEMPTS = 3
 STALE_AFTER_MINUTES = 30
@@ -44,6 +45,15 @@ def finish(job_id: uuid.UUID, result: dict) -> None:
         job = db.get(ResearchJob, job_id)
         job.status, job.result_json, job.error_message = "completed", result, None
         job.completed_at, job.locked_at = datetime.now(UTC), None
+        db.commit()
+
+
+def record_usage(job_id: uuid.UUID, usage) -> None:
+    """Add this attempt's LLM usage to the job; retries accumulate."""
+    with SessionLocal() as db:
+        job = db.get(ResearchJob, job_id)
+        job.tokens_used += usage["input_tokens"] + usage["output_tokens"]
+        job.cost_usd += llm.usage_cost(usage)
         db.commit()
 
 

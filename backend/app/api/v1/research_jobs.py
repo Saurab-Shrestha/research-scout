@@ -33,6 +33,8 @@ class JobOut(BaseModel):
     result: dict | None
     error_message: str | None
     attempts: int
+    tokens_used: int
+    cost_usd: float
     created_at: datetime
     completed_at: datetime | None
 
@@ -47,7 +49,7 @@ class EventOut(BaseModel):
 
 def _job_out(j: ResearchJob) -> JobOut:
     return JobOut(id=str(j.id), job_type=j.job_type, status=j.status, input=j.input_json, result=j.result_json,
-                  error_message=j.error_message, attempts=j.attempts, created_at=j.created_at,
+                  error_message=j.error_message, attempts=j.attempts, tokens_used=j.tokens_used, cost_usd=j.cost_usd, created_at=j.created_at,
                   completed_at=j.completed_at)
 
 

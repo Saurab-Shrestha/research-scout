@@ -22,6 +22,27 @@ uv run uvicorn app.main:app --app-dir backend --reload   # API on :8000, docs at
 uv run streamlit run frontend/app.py                      # UI on :8501
 ```
 
+### Or with Docker
+
+```bash
+# .env needs POSTGRES_PASSWORD and the API keys
+docker compose up --build -d     # db, migrations, API :8000, worker, UI :8501 (localhost only)
+```
+
+## Backups
+
+```bash
+scripts/backup.sh             # local Postgres -> backups/<timestamp>.dump (keeps newest 14)
+scripts/backup.sh --compose   # the compose db service
+pg_restore --clean --if-exists -d research_scout backups/<file>.dump
+```
+
+## Cost tracking
+
+Each job records `tokens_used` and `cost_usd` (`GET /api/v1/research-jobs/{id}`). Set
+`LLM_USD_PER_MILLION_INPUT`, `LLM_USD_PER_MILLION_OUTPUT` and `GROUNDED_SEARCH_USD_EACH` in `.env`
+from your Vertex AI pricing page; left blank, cost stays 0 and only tokens are tracked.
+
 ## Test
 
 ```bash
@@ -29,6 +50,13 @@ uv run pytest
 ```
 
 ## Status
+
+Milestone 6 (hardening):
+
+- [x] Docker image and compose stack (db, one-shot migrations, API, worker, UI), ports bound to localhost
+- [x] Database backups with rotation
+- [x] Per-job token and cost recording
+- [x] Security: SSRF guard tests, prompt-injection eval fixture, no write/SQL tools over MCP
 
 Milestone 5 (draft studio):
 

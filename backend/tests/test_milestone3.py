@@ -286,3 +286,29 @@ def test_llm_client_is_shared_across_threads(monkeypatch):
         clients = list(pool.map(lambda _: llm._client(), range(8)))
     llm._make_client.cache_clear()
     assert len({id(c) for c in clients}) == 1
+
+
+def test_worker_records_llm_usage_and_cost(monkeypatch):
+    from types import SimpleNamespace
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "llm_usd_per_million_input", 1.0)
+    monkeypatch.setattr(settings, "llm_usd_per_million_output", 2.0)
+    monkeypatch.setattr(settings, "grounded_search_usd_each", 0.01)
+
+    class FakeGraph:
+        def get_state(self, config):
+            return SimpleNamespace(next=())
+
+        def invoke(self, state, config):
+            llm._meter(SimpleNamespace(usage_metadata=SimpleNamespace(prompt_token_count=1_000_000,
+                                                                     candidates_token_count=500_000)), searches=3)
+            return {"result_summary": {}}
+
+    with SessionLocal() as db:
+        job = ResearchJob(job_type="evaluation", status="running", attempts=1, input_json={})
+        db.add(job)
+        db.commit()
+    assert run_job(FakeGraph(), job.id) == "completed"
+    with SessionLocal() as db:
+        job = db.get(ResearchJob, job.id)
+        assert job.tokens_used == 1_500_000 and job.cost_usd == 2.03

@@ -12,7 +12,7 @@ from langgraph.checkpoint.postgres import PostgresSaver
 from app.core.config import settings
 from app.db.models import ResearchJob
 from app.db.session import SessionLocal
-from app.services import jobs
+from app.services import jobs, llm
 from app.workflows import discovery, evaluation
 
 log = logging.getLogger("worker")
@@ -42,6 +42,7 @@ def run_job(graphs, job_id: uuid.UUID) -> str:
         job = db.get(ResearchJob, job_id)
         state = initial_state(job)
     graph = graphs[job.job_type] if isinstance(graphs, dict) else graphs
+    llm.USAGE.clear()
     try:
         if graph.get_state(config).next:
             jobs.emit(job_id, "resumed", "Resuming from last checkpoint")
@@ -51,9 +52,11 @@ def run_job(graphs, job_id: uuid.UUID) -> str:
             result = graph.invoke(state, config)
     except Exception as e:  # noqa: BLE001 - any node failure is recorded and retried
         log.exception("job %s failed", job_id)
+        jobs.record_usage(job_id, llm.USAGE)
         status = jobs.fail(job_id, f"{type(e).__name__}: {e}")
         jobs.emit(job_id, "error", f"{type(e).__name__}: {e}", will_retry=status == "queued")
         return status
+    jobs.record_usage(job_id, llm.USAGE)
     jobs.finish(job_id, result.get("result_summary", {}))
     return "completed"
 

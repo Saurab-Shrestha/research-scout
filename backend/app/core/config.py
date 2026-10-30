@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     google_genai_use_vertexai: bool = True  # Vertex AI express mode
     extraction_model: str = "gemini-3.8-flash"
     extraction_max_chars: int = 60_000
+    # Prices for job cost reporting; copy from your Vertex AI pricing page. 0 = cost not tracked.
+    llm_usd_per_million_input: float = 0.0
+    llm_usd_per_million_output: float = 0.0
+    grounded_search_usd_each: float = 0.0
 
     fetch_timeout_s: float = 20.0
     fetch_max_bytes: int = 2_000_000
