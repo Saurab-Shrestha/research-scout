@@ -1,12 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
-import { BookOpen, Building2, Compass, MapPin, Microscope, Search } from 'lucide-react'
+import { BookOpen, Building2, MapPin, Microscope, Search } from 'lucide-react'
 import { useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Meter, Pill } from '@/components/app/pills'
+import { ActivityPanel, AddResearchersPanel, EvaluatePanel, PipelineSteps } from '@/components/app/research-pipeline'
 import { EmptyState, ErrorState, PageHeader, RowsSkeleton } from '@/components/app/states'
 import { Button } from '@/components/ui/button'
 import { api, type Professor } from '@/lib/api'
 import { COUNTRY } from '@/lib/format'
+import { useUrlText } from '@/lib/use-url-text'
 import { cn } from '@/lib/utils'
 
 const topicsOf = (p: Professor) => (p.research_summary ?? '').split(/;\s*/).map((t) => t.trim().toLowerCase()).filter(Boolean)
@@ -37,7 +39,7 @@ export function ResearchersPage() {
     return m
   }, [opps.data])
 
-  const all = profs.data ?? []
+  const all = useMemo(() => profs.data ?? [], [profs.data])
   const topics = useMemo(() => {
     const count = new Map<string, number>()
     for (const p of all) for (const t of topicsOf(p)) count.set(t, (count.get(t) ?? 0) + 1)
@@ -46,7 +48,8 @@ export function ResearchersPage() {
   }, [all])
   const institutions = [...new Set(all.map((p) => p.university).filter((u): u is string => !!u))].sort()
 
-  const text = get('q').toLowerCase()
+  const [search, setSearch] = useUrlText('q')
+  const text = search.trim().toLowerCase()
   const rows = all
     .filter((p) => (!text || `${p.name} ${p.university ?? ''} ${p.research_summary ?? ''} ${p.title ?? ''}`.toLowerCase().includes(text))
       && (!get('topic') || topicsOf(p).includes(get('topic')))
@@ -60,15 +63,22 @@ export function ResearchersPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Researchers" description="Professors whose work overlaps your interests, whether or not they have advertised an opening."
-        actions={<Button variant="outline" asChild><Link to="/discover"><Compass />Find more researchers</Link></Button>} />
+      <PageHeader title="Researchers" description="Find academics working in your research areas, check their programs, and compare them, whether or not they have advertised an opening." />
 
+      <PipelineSteps />
+      <div className="grid items-stretch gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(300px,1fr)]">
+        <AddResearchersPanel />
+        <EvaluatePanel />
+      </div>
+      <ActivityPanel />
+
+      <h2 id="found" className="scroll-mt-6 pt-2 text-2xl">Researchers found <span className="num font-sans text-lg font-normal text-muted-foreground">({all.length})</span></h2>
       <div className="sheet space-y-4 p-4 sm:p-5">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))]">
           <Field label="Search">
             <span className="relative">
               <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <input type="search" value={get('q')} onChange={(e) => set('q', e.target.value)} placeholder="Name, university or research interest"
+              <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Name, university or research interest"
                 className={cn(selectClass, 'w-full pl-9 font-normal placeholder:text-muted-foreground')} />
             </span>
           </Field>
@@ -118,8 +128,8 @@ export function ResearchersPage() {
       {profs.isError ? <ErrorState error={profs.error} retry={() => profs.refetch()} />
         : profs.isLoading ? <RowsSkeleton rows={6} />
           : all.length === 0 ? (
-            <EmptyState icon={Microscope} title="No researchers yet" action={<Button asChild><Link to="/discover">Find researchers</Link></Button>}>
-              Search publication data for professors in your research areas.
+            <EmptyState icon={Microscope} title="No researchers yet" action={<Button asChild><a href="#add">Add researchers</a></Button>}>
+              Start a discovery above by research area, or add a specific professor’s faculty page.
             </EmptyState>
           ) : rows.length === 0 ? (
             <EmptyState icon={Search} title="No researchers found for this search"

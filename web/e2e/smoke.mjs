@@ -24,11 +24,21 @@ const step = (name) => console.log(`✓ ${name}`)
 
 try {
   for (const [path, heading] of [['/', /Good (morning|afternoon|evening)/], ['/opportunities', 'Discover Opportunities'], ['/shortlist', 'My Shortlist'], ['/tracker', 'Application Tracker'],
-    ['/drafts', 'Writing Studio'], ['/researchers', 'Researchers'], ['/discover', 'Find Researchers'], ['/profile', 'Academic Profile'], ['/settings', 'Settings']]) {
+    ['/drafts', 'Writing Studio'], ['/researchers', 'Researchers'], ['/profile', 'Academic Profile'], ['/settings', 'Settings']]) {
     await page.goto(WEB + path)
     await page.getByRole('heading', { level: 1, name: heading }).waitFor()
   }
   step('every page renders')
+
+  await page.goto(`${WEB}/opportunities`)
+  const box = page.locator('#q')
+  for (const text of ['toronto', 'quantum']) {  // clearing then typing fast used to bring the old text back
+    await box.fill(''); await box.pressSequentially(text, { delay: 10 })
+  }
+  await page.waitForTimeout(400)
+  assert.equal(await box.inputValue(), 'quantum')
+  assert.equal(new URL(page.url()).searchParams.get('q'), 'quantum')
+  step('search box keeps exactly what was typed')
 
   await page.goto(`${WEB}/opportunities?opp=${top.id}`)
   await page.getByRole('dialog').getByRole('tab', { name: 'Funding' }).click()

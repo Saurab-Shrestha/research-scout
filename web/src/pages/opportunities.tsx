@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ArrowDown, ArrowUp, ArrowUpDown, Search, SearchX } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { useUrlText } from '@/lib/use-url-text'
 import { useOpportunityParam } from '@/components/app/opportunity-sheet'
 import { DeadlineChip, Meter, Pill, ScoreBadge } from '@/components/app/pills'
 import { EmptyState, ErrorState, PageHeader, RowsSkeleton } from '@/components/app/states'
@@ -59,7 +60,8 @@ export function OpportunitiesPage() {
   const set = (k: string, v: string) => setParams((p) => { if (v === 'all' || v === '') p.delete(k); else p.set(k, v); return p }, { replace: true })
   const [sort, setSort] = useState<[SortKey, 'asc' | 'desc']>(['score', 'desc'])
   const showExcluded = params.get('excluded') === '1'
-  const text = get('q', '').toLowerCase()
+  const [search, setSearch] = useUrlText('q')
+  const text = search.trim().toLowerCase()
 
   const rows = useMemo(() => {
     const filtered = (q.data ?? []).filter((o) =>
@@ -72,7 +74,7 @@ export function OpportunitiesPage() {
     const dir = sort[1] === 'asc' ? 1 : -1
     return filtered.sort((a, b) => dir * SORTERS[sort[0]](a, b))
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q.data, params, sort])
+  }, [q.data, params, sort, text])
   const hidden = (q.data ?? []).filter((o) => o.excluded_reason).length
 
   return (
@@ -84,7 +86,7 @@ export function OpportunitiesPage() {
           <Label htmlFor="q" className="text-xs text-muted-foreground">Search</Label>
           <div className="relative">
             <Search aria-hidden className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input id="q" placeholder="Professor, university or program" className="pl-8" value={get('q', '')} onChange={(e) => set('q', e.target.value)} />
+            <Input id="q" placeholder="Professor, university or program" className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
         </div>
         <FilterSelect id="degree" label="Degree" value={get('degree')} onChange={(v) => set('degree', v)} options={Object.entries(DEGREE)} />

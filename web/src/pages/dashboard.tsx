@@ -170,7 +170,7 @@ function Deadlines({ items, onOpen }: { items: Opportunity[]; onOpen: (id: strin
 
 const QUICK = [
   { to: '/drafts', label: 'Draft a professor email', icon: FilePenLine },
-  { to: '/discover', label: 'Find researchers in your areas', icon: Microscope },
+  { to: '/researchers#add', label: 'Find researchers in your areas', icon: Microscope },
   { to: '/profile', label: 'Update your academic profile', icon: UserRound },
 ]
 
@@ -234,7 +234,7 @@ export function DashboardPage() {
             <Link to="/opportunities" className="ink-link inline-flex items-center gap-1 text-sm">View all {shortlist.length || ''} <ArrowRight aria-hidden className="size-4" /></Link>
           </div>
           {opps.isLoading ? <RowsSkeleton rows={4} /> : shortlist.length === 0 ? (
-            <EmptyState icon={Microscope} title="No opportunities yet" action={<Button asChild><Link to="/discover">Find researchers</Link></Button>}>
+            <EmptyState icon={Microscope} title="No opportunities yet" action={<Button asChild><Link to="/researchers#add">Find researchers</Link></Button>}>
               Find professors in your areas, then evaluate their programs to rank them here.
             </EmptyState>
           ) : (

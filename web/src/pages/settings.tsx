@@ -82,7 +82,7 @@ export function SettingsPage() {
           {lastEval ? <>Programs were last evaluated {timeAgo(lastEval.completed_at ?? lastEval.created_at)}.</> : 'Programs have not been evaluated yet.'}
           {' '}Re-checking runs in the background and takes about 15 to 20 minutes.
         </p>
-        <Button variant="outline" className="mt-3" asChild><Link to="/discover">Re-check programs <ArrowRight data-icon="inline-end" /></Link></Button>
+        <Button variant="outline" className="mt-3" asChild><Link to="/researchers#evaluate">Re-check programs <ArrowRight data-icon="inline-end" /></Link></Button>
       </Section>
 
       <Section id="data" title="Data management" description="Your profile and tracker stay on this machine’s database." icon={Database}>

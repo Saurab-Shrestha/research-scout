@@ -192,7 +192,7 @@ export function ResearcherPage() {
         <div className="space-y-6 lg:sticky lg:top-6">
           <Section id="activity" title="Research activity" icon={BookOpen}><Activity pubs={p.publications} /></Section>
           <Section id="fit" title="Research fit" icon={Sparkles}>
-            {matches.length === 0 ? <p className="text-sm text-muted-foreground">Not compared with your interests yet. Evaluate this professor’s programs from Find Researchers.</p> : (
+            {matches.length === 0 ? <p className="text-sm text-muted-foreground">Not compared with your interests yet. Evaluate this professor’s programs from the Researchers page.</p> : (
               <ul className="space-y-2.5">
                 {[...new Map(matches.map((m) => [m.interest, m])).values()].map((m) => (
                   <li key={m.interest} className="text-sm">
