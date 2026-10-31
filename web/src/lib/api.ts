@@ -1,6 +1,6 @@
 // Typed client for the FastAPI backend (/api/v1). Shapes mirror backend/app/api/v1/*.
 
-export type Degree = 'phd' | 'thesis_masters' | 'course_masters'
+export type Degree = 'bachelors' | 'course_masters' | 'thesis_masters' | 'phd'
 export type FundingStatus =
   | 'confirmed_full' | 'confirmed_partial' | 'potential' | 'unfunded' | 'unknown' | (string & {})
 export type EligibilityStatus =
@@ -109,7 +109,19 @@ export interface Profile {
   career_goals: string | null
   intended_start_term: string | null
   funding_preferences: { needs_tuition_coverage: boolean; needs_living_stipend: boolean; requires_funding_at_admission: boolean; max_unfunded_cost_usd: number | null }
+  target_degrees: Degree[]
+  target_countries: string[]
 }
+
+export type LlmProvider = 'gemini' | 'openai' | 'anthropic' | 'openai_compatible'
+export type EmbeddingProvider = Exclude<LlmProvider, 'anthropic'>
+export interface LlmSettings {
+  provider: LlmProvider; model: string; base_url: string; vertexai: boolean
+  embedding_provider: EmbeddingProvider; embedding_model: string
+  usd_per_million_input: number; usd_per_million_output: number; usd_per_search: number
+  providers: { id: LlmProvider; label: string; default_model: string; web_search: boolean; embeddings: boolean; default_embedding_model: string | null; key_saved: boolean; key_in_env: boolean }[]
+}
+export type LlmSettingsIn = Partial<Omit<LlmSettings, 'providers'>> & { keys?: Partial<Record<LlmProvider, string>> }
 
 export class ApiError extends Error {
   status: number
@@ -148,6 +160,9 @@ export const api = {
   updateDraft: (id: string, body: { subject?: string | null; body?: string }) => request<Draft>('PATCH', `/drafts/${id}`, body),
   professors: (limit = 50) => request<Professor[]>('GET', `/professors?limit=${limit}`),
   professor: (id: string) => request<Professor>('GET', `/professors/${id}`),
+  llmSettings: () => request<LlmSettings>('GET', '/settings/llm'),
+  saveLlmSettings: (body: LlmSettingsIn) => request<LlmSettings & { embeddings_reset: boolean }>('PUT', '/settings/llm', body),
+  testLlm: () => request<{ chat: string; embeddings: string }>('POST', '/settings/llm/test'),
   jobs: () => request<Job[]>('GET', '/research-jobs'),
   job: (id: string) => request<Job>('GET', `/research-jobs/${id}`),
   jobEvents: (id: string) => request<JobEvent[]>('GET', `/research-jobs/${id}/events`),

@@ -3,6 +3,7 @@ import { Check, ChevronDown, Compass, Link2, Loader2, Microscope, Scale, Search 
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
+import { CountryPicker } from '@/components/app/country-picker'
 import { Pill } from '@/components/app/pills'
 import { RowsSkeleton } from '@/components/app/states'
 import { TagInput } from '@/components/app/tags'
@@ -13,7 +14,7 @@ import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { api, type Degree, type Job } from '@/lib/api'
-import { countryList, DEGREE, REGIONS, timeAgo } from '@/lib/format'
+import { countryList, DEGREE, timeAgo } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 // The research pipeline behind the Researchers page: add researchers, evaluate their programs, watch the jobs.
@@ -66,42 +67,12 @@ export function PipelineSteps() {
   )
 }
 
-/** Countries by region; the region checkbox selects or clears all of its countries. */
-function CountryPicker({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
-  return (
-    <fieldset className="space-y-2">
-      <legend className="text-sm font-medium">Countries <span className="font-normal text-muted-foreground">({value.length} selected)</span></legend>
-      {Object.entries(REGIONS).map(([region, names]) => {
-        const codes = Object.keys(names)
-        const picked = codes.filter((c) => value.includes(c)).length
-        return (
-          <div key={region} className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-4">
-            <label className="flex w-36 shrink-0 items-center gap-2 pt-1 text-sm">
-              <Checkbox checked={picked === codes.length ? true : picked ? 'indeterminate' : false}
-                onCheckedChange={() => onChange(picked === codes.length ? value.filter((c) => !codes.includes(c)) : [...new Set([...value, ...codes])])} />
-              {region}
-            </label>
-            <div className="flex flex-wrap gap-1.5">
-              {codes.map((c) => (
-                <button key={c} type="button" aria-pressed={value.includes(c)} onClick={() => onChange(toggle(value, c))}
-                  className={cn('rounded-lg border px-2.5 py-1 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-ring',
-                    value.includes(c) ? 'border-navy bg-navy text-navy-ink' : 'border-border bg-sheet text-muted-foreground hover:border-input hover:text-foreground')}>
-                  {names[c]}
-                </button>
-              ))}
-            </div>
-          </div>
-        )
-      })}
-    </fieldset>
-  )
-}
-
 function ByArea() {
   const profile = useQuery({ queryKey: ['profile'], queryFn: api.profile, retry: false })
   const [edited, setAreas] = useState<string[] | null>(null)
   const areas = edited ?? profile.data?.research_interests ?? []  // your profile's interests until you edit them
-  const [countries, setCountries] = useState<string[]>(['US', 'CA'])
+  const [editedCountries, setCountries] = useState<string[] | null>(null)
+  const countries = editedCountries ?? profile.data?.target_countries ?? ['US', 'CA']  // the profile's study plan until edited
   const [max, setMax] = useState(20)
   const [findPages, setFindPages] = useState(true)
   const [refresh, setRefresh] = useState(false)
@@ -198,7 +169,9 @@ export function AddResearchersPanel() {
 export function EvaluatePanel() {
   const profs = useQuery({ queryKey: ['professors', 'directory'], queryFn: () => api.professors(200) })
   const jobs = useJobs()
-  const [degrees, setDegrees] = useState<Degree[]>(['phd', 'thesis_masters'])
+  const profile = useQuery({ queryKey: ['profile'], queryFn: api.profile, retry: false })
+  const [editedDegrees, setDegrees] = useState<Degree[] | null>(null)
+  const degrees = editedDegrees ?? profile.data?.target_degrees ?? ['thesis_masters', 'phd']
   const [force, setForce] = useState(false)
   const started = useStarted()
   const evaluate = useMutation({

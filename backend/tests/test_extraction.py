@@ -34,7 +34,7 @@ def fake_extraction(**overrides) -> PageExtraction:
 
 
 def use_fake_llm(monkeypatch, extraction: PageExtraction):
-    def fake(system, user, schema, model):
+    def fake(system, user, schema, model=None):
         assert "<page_content>" in user
         return llm.LLMResult(parsed=extraction, model=model, input_tokens=100, output_tokens=50)
     monkeypatch.setattr(llm, "generate_structured", fake)

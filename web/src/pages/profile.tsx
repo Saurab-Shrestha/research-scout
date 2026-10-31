@@ -11,11 +11,13 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { api, type Profile } from '@/lib/api'
+import { CountryPicker } from '@/components/app/country-picker'
+import { api, type Degree, type Profile } from '@/lib/api'
+import { DEGREE_LONG } from '@/lib/format'
 
 const EMPTY: Profile = {
   name: '', education: [], experience: [], skills: [], test_scores: [], research_interests: [], career_goals: null,
-  intended_start_term: null,
+  intended_start_term: null, target_degrees: ['thesis_masters', 'phd'], target_countries: ['US', 'CA'],
   funding_preferences: { needs_tuition_coverage: true, needs_living_stipend: true, requires_funding_at_admission: true, max_unfunded_cost_usd: null },
 }
 
@@ -64,11 +66,27 @@ export function ProfilePage() {
       <PageHeader title="Academic Profile" description="Used for matching, eligibility checks and drafts. Only facts here are used about you." />
 
       <Section title="Basics">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field id="name" label="Full name"><Input id="name" required value={p.name} onChange={(e) => up({ name: e.target.value })} /></Field>
-          <Field id="term" label="Intended start" hint="e.g. Fall 2027"><Input id="term" value={p.intended_start_term ?? ''} onChange={(e) => up({ intended_start_term: e.target.value || null })} /></Field>
-        </div>
+        <Field id="name" label="Full name"><Input id="name" required value={p.name} onChange={(e) => up({ name: e.target.value })} /></Field>
         <Field id="goals" label="Career goals"><Textarea id="goals" rows={3} value={p.career_goals ?? ''} onChange={(e) => up({ career_goals: e.target.value || null })} placeholder="What you want to do after the degree" /></Field>
+      </Section>
+
+      <Section title="Study plan" description="What you’re applying for. Discovery, evaluation and your Overview default to these.">
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,16rem)_1fr]">
+          <Field id="term" label="Intended start" hint="e.g. Fall 2027; deadlines are looked up for this intake"><Input id="term" value={p.intended_start_term ?? ''} onChange={(e) => up({ intended_start_term: e.target.value || null })} /></Field>
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium">Degrees</legend>
+            <div className="flex flex-wrap gap-x-5 gap-y-2">
+              {(Object.keys(DEGREE_LONG) as Degree[]).map((d) => (
+                <label key={d} className="flex items-center gap-2 text-sm">
+                  <Checkbox checked={p.target_degrees.includes(d)} disabled={p.target_degrees.length === 1 && p.target_degrees.includes(d)}
+                    onCheckedChange={() => up({ target_degrees: p.target_degrees.includes(d) ? p.target_degrees.filter((x) => x !== d) : [...p.target_degrees, d] })} />
+                  {DEGREE_LONG[d]}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        </div>
+        <CountryPicker value={p.target_countries} onChange={(v) => up({ target_countries: v.length ? v : p.target_countries })} />
       </Section>
 
       <Section title="Research interests" description="Each interest is compared with professors’ recent papers. Be specific.">
@@ -95,17 +113,19 @@ export function ProfilePage() {
         </Section>
       </div>
 
-      <Section title="Education" action={<Button type="button" variant="outline" size="sm" onClick={() => up({ education: [...p.education, { degree: '', field: '', university: '', country: null, graduation_year: null, gpa: null, gpa_scale: null, relevant_courses: [] }] })}><Plus />Add</Button>}>
+      <Section title="Education" description="Every qualification, including secondary school if you’re applying for a bachelor’s." action={<Button type="button" variant="outline" size="sm" onClick={() => up({ education: [...p.education, { degree: '', field: '', university: '', country: null, graduation_year: null, gpa: null, gpa_scale: null, relevant_courses: [] }] })}><Plus />Add</Button>}>
         {p.education.map((e, i) => {
           const set = (patch: Partial<typeof e>) => up({ education: p.education.map((x, j) => (j === i ? { ...x, ...patch } : x)) })
           return (
             <div key={i} className="grid gap-3 rounded-lg border p-3 sm:grid-cols-6">
-              <div className="sm:col-span-2"><Field id={`deg-${i}`} label="Degree"><Input id={`deg-${i}`} value={e.degree} onChange={(ev) => set({ degree: ev.target.value })} /></Field></div>
+              <div className="sm:col-span-2"><Field id={`deg-${i}`} label="Degree"><Input id={`deg-${i}`} value={e.degree} placeholder="BSc, +2, A-levels" onChange={(ev) => set({ degree: ev.target.value })} /></Field></div>
               <div className="sm:col-span-4"><Field id={`field-${i}`} label="Field"><Input id={`field-${i}`} value={e.field} onChange={(ev) => set({ field: ev.target.value })} /></Field></div>
-              <div className="sm:col-span-3"><Field id={`uni-${i}`} label="University"><Input id={`uni-${i}`} value={e.university} onChange={(ev) => set({ university: ev.target.value })} /></Field></div>
+              <div className="sm:col-span-2"><Field id={`uni-${i}`} label="School or university"><Input id={`uni-${i}`} value={e.university} onChange={(ev) => set({ university: ev.target.value })} /></Field></div>
+              <div><Field id={`year-${i}`} label="Year"><Input id={`year-${i}`} type="number" min={1950} max={2100} value={e.graduation_year ?? ''} onChange={(ev) => set({ graduation_year: num(ev.target.value) })} /></Field></div>
               <div><Field id={`cty-${i}`} label="Country"><Input id={`cty-${i}`} maxLength={2} placeholder="NP" value={e.country ?? ''} onChange={(ev) => set({ country: ev.target.value.toUpperCase() || null })} /></Field></div>
               <div><Field id={`gpa-${i}`} label="GPA / grade"><Input id={`gpa-${i}`} type="number" step="0.01" value={e.gpa ?? ''} onChange={(ev) => set({ gpa: num(ev.target.value) })} /></Field></div>
               <div><Field id={`scale-${i}`} label="Out of"><Input id={`scale-${i}`} type="number" step="0.1" value={e.gpa_scale ?? ''} onChange={(ev) => set({ gpa_scale: num(ev.target.value) })} /></Field></div>
+              <div className="sm:col-span-6"><Field id={`courses-${i}`} label="Relevant courses"><TagInput id={`courses-${i}`} value={e.relevant_courses} onChange={(v) => set({ relevant_courses: v })} placeholder="e.g. Machine Learning" /></Field></div>
               <div className="sm:col-span-6 flex justify-between">
                 <p className="text-xs text-muted-foreground">{e.gpa_scale && e.gpa_scale !== 4 ? 'GPA minimums are on a 4.0 scale; add a WES-converted entry to enable GPA checks.' : ''}</p>
                 <Button type="button" variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => up({ education: p.education.filter((_, j) => j !== i) })}><Trash2 />Remove</Button>

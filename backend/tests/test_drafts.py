@@ -12,7 +12,7 @@ from tests.test_milestone3 import ADMISSIONS, program_extraction, seed
 
 def scored_opportunity(client, monkeypatch) -> str:
     prof_id = seed()
-    monkeypatch.setattr(llm, "search_text", lambda prompt, model: ("https://grad.example.edu/phd", []))
+    monkeypatch.setattr(llm, "search_text", lambda prompt, model=None: ("https://grad.example.edu/phd", []))
     monkeypatch.setattr(ingestion, "fetch_public_page", lambda url: FetchResult(url, 200, "text/plain", ADMISSIONS))
     monkeypatch.setattr(llm, "generate_structured", lambda *a: llm.LLMResult(program_extraction(), "m", 1, 1))
     monkeypatch.setattr(llm, "embed", lambda texts: [[1.0, 0.0] for _ in texts])
@@ -29,11 +29,11 @@ def test_email_draft_flags_invented_citations_and_saves_edits(client, monkeypatc
     opp_id = scored_opportunity(client, monkeypatch)
     seen = {}
 
-    def fake(system, user, schema, model):
+    def fake(system, user, schema, model=None):
         seen["user"] = user
         return llm.LLMResult(EmailDraft(subject="PhD Fall 2027 inquiry", body="Dear Prof. Lovelace, [lab name] ...",
                                         cited_papers=["Quantum machine learning", "A Paper That Does Not Exist"]),
-                             model, 1, 1)
+                             "m", 1, 1)
     monkeypatch.setattr(llm, "generate_structured", fake)
 
     r = client.post(f"/api/v1/opportunities/{opp_id}/drafts", json={"kind": "email"})
@@ -72,10 +72,10 @@ def test_follow_up_needs_a_first_email_and_reuses_its_thread(client, monkeypatch
 
     seen = {}
 
-    def fake(system, user, schema, model):
+    def fake(system, user, schema, model=None):
         seen["user"] = user
         return llm.LLMResult(EmailDraft(subject="Something else", body="Dear Prof. Lovelace, following up.",
-                                        cited_papers=[]), model, 1, 1)
+                                        cited_papers=[]), "m", 1, 1)
     monkeypatch.setattr(llm, "generate_structured", fake)
     draft = client.post(f"/api/v1/opportunities/{opp_id}/drafts", json={"kind": "follow_up"}).json()
     assert draft["kind"] == "follow_up" and draft["subject"] == "Re: PhD Fall 2027 inquiry"

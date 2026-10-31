@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.api.v1 import applications, drafts, opportunities, professors, profile, research_jobs, sources
+from app.api.v1 import applications, drafts, opportunities, professors, profile, research_jobs, settings, sources
 from app.db.session import get_db
 
 app = FastAPI(title="Research Scout", version="0.1.0")
@@ -26,6 +26,7 @@ api.include_router(research_jobs.router)
 api.include_router(opportunities.router)
 api.include_router(applications.router)
 api.include_router(drafts.router)
+api.include_router(settings.router)
 app.include_router(api)
 
 # The React app (web/), when built with `npm run build`, is served from the same origin as the API.

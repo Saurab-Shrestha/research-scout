@@ -21,6 +21,8 @@ def _to_out(p: CandidateProfile) -> CandidateProfileOut:
         career_goals=p.career_goals,
         intended_start_term=p.intended_start_term,
         funding_preferences=p.funding_preferences_json,
+        target_degrees=p.target_degrees,
+        target_countries=p.target_countries,
     )
 
 
@@ -50,6 +52,8 @@ def put_profile(body: CandidateProfileIn, db: Session = Depends(get_db)):
     profile.career_goals = data["career_goals"]
     profile.intended_start_term = data["intended_start_term"]
     profile.funding_preferences_json = data["funding_preferences"]
+    profile.target_degrees = data["target_degrees"]
+    profile.target_countries = data["target_countries"]
     db.add(profile)
     db.commit()
     return _to_out(profile)

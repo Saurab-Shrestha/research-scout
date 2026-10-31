@@ -15,9 +15,11 @@ WEIGHTS = {"research": 0.35, "funding": 0.25, "eligibility": 0.20, "availability
 FUNDING_POINTS = {"confirmed_full": 100, "confirmed_partial": 70, "advertised_unverified": 50,
                   "potential": 35, "unknown": 20, "unfunded": 0}
 ELIGIBILITY_POINTS = {"eligible": 100, "potentially_eligible": 60, "insufficient_information": 40, "ineligible": 0}
-# Calibration knobs: cosine similarity of gemini-embedding-001 vectors mapped linearly to 0-100.
-# Measured on real data (Oct 2026): loosely related work scores ~0.80-0.82, strong matches 0.85-0.89.
-SIM_FLOOR, SIM_CEIL = 0.78, 0.90
+# Calibration knobs: cosine similarity mapped linearly to 0-100, per embedding model (floor, ceiling).
+# gemini-embedding-001 measured on real data (Oct 2026): loosely related work ~0.80-0.82, strong matches 0.85-0.89.
+SIM_RANGE = {"gemini-embedding-001": (0.78, 0.90)}
+# ponytail: uncalibrated guess for other models; measure like the Gemini row and add an entry.
+DEFAULT_SIM_RANGE = (0.30, 0.70)
 
 
 def _cosine(a: list[float], b: list[float]) -> float:
@@ -53,7 +55,8 @@ def research_alignment(profile: CandidateProfile, publications: list[Publication
     matches.sort(key=lambda m: m["similarity"], reverse=True)
     top = [m["similarity"] for m in matches[:2]]
     raw = 0.8 * top[0] + 0.2 * top[-1] if top else 0.0
-    return round(max(0.0, min(100.0, (raw - SIM_FLOOR) / (SIM_CEIL - SIM_FLOOR) * 100)), 1), matches[:3]
+    floor, ceil = SIM_RANGE.get(llm.config().embed_model, DEFAULT_SIM_RANGE)
+    return round(max(0.0, min(100.0, (raw - floor) / (ceil - floor) * 100)), 1), matches[:3]
 
 
 def availability_score(professor: Professor, last_author_recent: int) -> float:

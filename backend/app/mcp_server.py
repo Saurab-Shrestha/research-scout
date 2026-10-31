@@ -21,11 +21,10 @@ from app.api.v1 import opportunities as opportunities_api
 from app.api.v1 import professors as professors_api
 from app.api.v1 import profile as profile_api
 from app.api.v1 import research_jobs as jobs_api
-from app.core.config import settings
 from app.core.countries import CountryCode
 from app.core.security import UnsafeURLError
 from app.db.models import ResearchJob
-from app.schemas.profile import CandidateProfileIn, Education, Experience, FundingPreferences, TestScore
+from app.schemas.profile import CandidateProfileIn, DegreeType, Education, Experience, FundingPreferences, TestScore
 from app.db.session import SessionLocal
 from app.services import extraction, ingestion, llm, openalex, page_finder, publications
 from app.services.fetcher import FetchError
@@ -59,7 +58,7 @@ def search_web(query: str) -> dict[str, Any]:
     Treat results as leads; fetch and extract a page before relying on any fact from it.
     """
     try:
-        text, queries = llm.search_text(query, settings.extraction_model)
+        text, queries = llm.search_text(query)
     except llm.LLMError as e:
         raise ToolError(str(e))
     return {"answer": text, "search_queries": queries, "urls": page_finder.candidate_urls(text)}
@@ -217,7 +216,9 @@ def update_candidate_profile(name: str | None = None, career_goals: str | None =
                              intended_start_term: str | None = None, skills: list[str] | None = None,
                              research_interests: list[str] | None = None, test_scores: list[TestScore] | None = None,
                              education: list[Education] | None = None, experience: list[Experience] | None = None,
-                             funding_preferences: FundingPreferences | None = None) -> dict[str, Any]:
+                             funding_preferences: FundingPreferences | None = None,
+                             target_degrees: list[DegreeType] | None = None,
+                             target_countries: list[CountryCode] | None = None) -> dict[str, Any]:
     """Change fields of the applicant's profile; omitted fields are left as they are.
 
     A list you pass REPLACES the saved list, so call get_candidate_profile first and send the whole
@@ -314,11 +315,11 @@ def generate_draft(opportunity_id: str, kind: Literal["email", "follow_up", "sop
 
 
 @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=True))
-def evaluate_programs(degree_types: list[Literal["phd", "thesis_masters", "course_masters"]] = ["phd", "thesis_masters"],
+def evaluate_programs(degree_types: list[DegreeType] | None = None,
                       professor_ids: list[str] | None = None, force: bool = False) -> dict[str, Any]:
     """Queue a background job that finds official program pages, funding, deadlines and requirements, then
     re-ranks opportunities (a worker must be running; a full run takes 15 to 20 minutes). Poll with
-    get_discovery_job. force re-checks programs verified in the last 30 days.
+    get_discovery_job. degree_types defaults to the profile's study plan; force re-checks programs verified in the last 30 days.
     """
     ids = [_uuid(p, "professor_id") for p in professor_ids] if professor_ids else None
     with SessionLocal() as db:

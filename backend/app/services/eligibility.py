@@ -67,6 +67,10 @@ PHD_ENTRY = {
 def check_degree(profile: dict, requirements: dict, country: str | None, degree_type: str) -> Check:
     has_masters = any("master" in (e.get("degree") or "").lower() or (e.get("degree") or "").upper().startswith("M")
                       for e in profile.get("education", []))
+    if degree_type == "bachelors":
+        if profile.get("education"):
+            return Check("degree", "ok", "Secondary-school completion is the entry requirement.")
+        return Check("degree", "unknown", "Add your secondary-school record to the profile.")
     if degree_type != "phd" or has_masters:
         return Check("degree", "ok", "Bachelor's satisfies the entry degree.")
     if requirements.get("requires_masters_for_phd") == "yes":

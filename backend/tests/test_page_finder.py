@@ -25,11 +25,11 @@ def page_extraction(name: str, university: str) -> PageExtraction:
 
 
 def setup(monkeypatch, search_answer: str, extractions: dict[str, PageExtraction]):
-    monkeypatch.setattr(llm, "search_text", lambda prompt, model: (search_answer, ["q"]))
+    monkeypatch.setattr(llm, "search_text", lambda prompt, model=None: (search_answer, ["q"]))
     monkeypatch.setattr(ingestion, "fetch_public_page",
                         lambda url: FetchResult(url, 200, "text/plain", PAGES[url]))
 
-    def fake_structured(system, user, schema, model):
+    def fake_structured(system, user, schema, model=None):
         url = user.split("\n", 1)[0].removeprefix("Source URL: ")
         return llm.LLMResult(extractions[url], model, 10, 10)
     monkeypatch.setattr(llm, "generate_structured", fake_structured)

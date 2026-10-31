@@ -7,7 +7,6 @@ from datetime import date
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.db.models import (Application, CandidateProfile, Department, Draft, FundingAssessment, MatchResult, Opportunity, Professor,
                            ProfessorPublication, Program, Publication, University)
 from app.prompts import drafts as prompt
@@ -100,18 +99,18 @@ def generate_draft(db: Session, opportunity: Opportunity, profile: CandidateProf
     context, papers, trace = build_context(db, opportunity, profile)
     warnings: list[str] = []
     if kind == "email":
-        result = llm.generate_structured(prompt.EMAIL_SYSTEM, context, EmailDraft, settings.extraction_model)
+        result = llm.generate_structured(prompt.EMAIL_SYSTEM, context, EmailDraft)
         subject, body = result.parsed.subject, result.parsed.body
     elif kind == "follow_up":
         extra, first, warnings = _follow_up_context(db, opportunity, today or date.today())
         context += "\n\n" + extra
         trace = {**trace, "first_email_id": str(first.id), "context": context}
-        result = llm.generate_structured(prompt.FOLLOW_UP_SYSTEM, context, EmailDraft, settings.extraction_model)
+        result = llm.generate_structured(prompt.FOLLOW_UP_SYSTEM, context, EmailDraft)
         # Same thread: the subject is the first email's, never the model's.
         subject = first.subject if (first.subject or "").lower().startswith("re:") else f"Re: {first.subject or ''}".strip()
         body = result.parsed.body
     else:
-        result = llm.generate_structured(prompt.SOP_SYSTEM, context, SopOutline, settings.extraction_model)
+        result = llm.generate_structured(prompt.SOP_SYSTEM, context, SopOutline)
         subject, body = None, _sop_markdown(result.parsed)
     ids, citation_warnings = _check_citations(result.parsed.cited_papers, papers)
     warnings += citation_warnings

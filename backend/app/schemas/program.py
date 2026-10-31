@@ -15,7 +15,7 @@ class ProgramExtraction(BaseModel):
     page_kind: PageKind
     university: Claim
     program_name: Claim  # e.g. "PhD in Computer Science"
-    degree_types: list[Claim]  # values: phd | thesis_masters | course_masters
+    degree_types: list[Claim]  # values: phd | thesis_masters | course_masters | bachelors
 
     guaranteed_funding: Claim  # "yes" when all admitted students in this program are funded
     tuition_coverage: Claim  # "full" | "partial" | "none"

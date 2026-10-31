@@ -58,7 +58,7 @@ def evaluate(fixture: dict) -> dict:
     start = time.monotonic()
     try:
         result = llm.generate_structured(prompt.SYSTEM, prompt.build_user_message(fixture["url"], text),
-                                         schema, settings.extraction_model)
+                                         schema)
     except llm.LLMError as e:
         return {"id": fixture["id"], "error": str(e)}
     parsed, page = result.parsed, _norm(text)
@@ -96,7 +96,7 @@ def main() -> None:
     fixtures = load(args.kind)[: args.limit]
     with ThreadPoolExecutor(5) as pool:
         results = list(pool.map(evaluate, fixtures))
-    summary = summarize(results) | {"model": settings.extraction_model, "prompts":
+    summary = summarize(results) | {"model": llm.config().chat_model, "prompts":
                                     {"faculty": faculty_prompt.VERSION, "program": program_prompt.VERSION}}
     for r in results:
         bad = {k: v for k, v in r.get("fields", {}).items() if not v["ok"]}

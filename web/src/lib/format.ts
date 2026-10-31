@@ -1,6 +1,9 @@
 import type { AppStatus, CheckStatus, Degree, EligibilityStatus, FundingStatus } from './api'
 
-export const DEGREE: Record<Degree, string> = { phd: 'PhD', thesis_masters: 'Thesis MS', course_masters: 'Course MS' }
+export const DEGREE: Record<Degree, string> = { bachelors: 'Bachelor’s', course_masters: 'Course MS', thesis_masters: 'Thesis MS', phd: 'PhD' }
+export const DEGREE_LONG: Record<Degree, string> = {
+  bachelors: 'Bachelor’s', course_masters: 'Course-based master’s', thesis_masters: 'Research (thesis) master’s', phd: 'PhD',
+}
 
 export type Tone = 'success' | 'info' | 'warning' | 'danger' | 'neutral'
 

@@ -206,7 +206,7 @@ CANDIDATES = {
 def fake_planner(monkeypatch, selected=None, error=None):
     from app.services import llm
 
-    def fake(system, user, schema, model):
+    def fake(system, user, schema, model=None):
         if error:
             raise llm.LLMError(error)
         return llm.LLMResult(schema(selected=[{"topic_id": t, "reason": "r"} for t in selected]), model, 1, 1)

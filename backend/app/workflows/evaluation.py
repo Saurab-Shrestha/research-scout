@@ -13,7 +13,7 @@ from app.services import llm, matching, openalex, programs
 from app.services.jobs import emit
 
 DEGREE_TITLES = {"phd": "PhD supervision", "thesis_masters": "Thesis master's supervision",
-                 "course_masters": "Course-based master's"}
+                 "course_masters": "Course-based master's", "bachelors": "Undergraduate study"}
 
 
 class EvaluationState(TypedDict):
@@ -32,10 +32,12 @@ def select_professors(state: EvaluationState) -> dict:
             ids = state["professor_ids"]
         else:
             ids = [str(i) for i in db.scalars(select(Professor.id).where(Professor.university_id.is_not(None)))]
-        if db.scalars(select(CandidateProfile)).first() is None:
+        profile = db.scalars(select(CandidateProfile)).first()
+        if profile is None:
             raise ValueError("save a candidate profile before evaluating opportunities")
-    emit(state["job_id"], "selected", f"Evaluating {len(ids)} professors × {len(state['degree_types'])} degree types")
-    return {"professor_ids": ids}
+        degrees = state["degree_types"] or profile.target_degrees
+    emit(state["job_id"], "selected", f"Evaluating {len(ids)} professors × {len(degrees)} degree types")
+    return {"professor_ids": ids, "degree_types": degrees}
 
 
 PARALLEL_LOOKUPS = 5  # ponytail: fixed pool; lower it if Vertex starts returning 429s

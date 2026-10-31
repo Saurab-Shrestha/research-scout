@@ -1,3 +1,5 @@
+> **Original design document.** Written before the build; the code has since diverged in places (for example the folder layout and the single-provider LLM adapter). The README and the code are the source of truth.
+
 # AI Research Opportunity Scout — MVP Planning Document
 
 | Field         | Value                                                                 |

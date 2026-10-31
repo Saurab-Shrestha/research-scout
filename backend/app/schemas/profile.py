@@ -2,6 +2,10 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.core.countries import CountryCode
+
+DegreeType = Literal["bachelors", "course_masters", "thesis_masters", "phd"]
+
 
 class Education(BaseModel):
     degree: str
@@ -45,6 +49,8 @@ class CandidateProfileIn(BaseModel):
     career_goals: str | None = None
     intended_start_term: str | None = None  # e.g. "Fall 2027"
     funding_preferences: FundingPreferences = FundingPreferences()
+    target_degrees: list[DegreeType] = Field(["thesis_masters", "phd"], min_length=1)
+    target_countries: list[CountryCode] = Field(["US", "CA"], min_length=1)
 
 
 class CandidateProfileOut(CandidateProfileIn):

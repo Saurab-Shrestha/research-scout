@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { ArrowRight, CalendarDays, ChevronRight, Clock, FilePenLine, MapPin, Microscope, Search, ShieldCheck, Star, Telescope, UserRound, Zap, type LucideIcon } from 'lucide-react'
+import { ArrowRight, CalendarDays, Check, ChevronRight, Clock, FilePenLine, MapPin, Microscope, Search, ShieldCheck, Star, Telescope, UserRound, Zap, type LucideIcon } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { CalendarExportButton } from '@/components/app/calendar-export'
@@ -7,7 +7,7 @@ import { useOpportunityParam } from '@/components/app/opportunity-sheet'
 import { Meter, Pill } from '@/components/app/pills'
 import { EmptyState, ErrorState, RowsSkeleton } from '@/components/app/states'
 import { Button } from '@/components/ui/button'
-import { api, CLOSED, type Opportunity } from '@/lib/api'
+import { api, CLOSED, type Degree, type Opportunity, type Profile } from '@/lib/api'
 import { COUNTRY, daysUntil, DEGREE, formatDate, funding, relativeDays } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -16,16 +16,13 @@ const VERIFIED = ['confirmed_full', 'confirmed_partial']
 const shortUni = (name: string) => name.replace(/^University of /, 'U. of ')
 const monogram = (name: string) => name.replace(/\b(of|the|at|and)\b/gi, '').split(/[\s,-]+/).filter(Boolean).map((w) => w[0]).join('').slice(0, 3).toUpperCase()
 
-// Filters the hero can hand to Discover; each maps to a real query param there.
-const CHIPS = [
-  { key: 'degree', value: 'phd', label: 'PhD' },
-  { key: 'degree', value: 'thesis_masters', label: 'Thesis Master’s' },
-  { key: 'country', value: 'US', label: 'USA' },
-  { key: 'country', value: 'CA', label: 'Canada' },
-]
-
-function SearchHero() {
+function SearchHero({ profile }: { profile?: Profile }) {
   const navigate = useNavigate()
+  // Filters the hero can hand to Discover, from the study plan; each maps to a real query param there.
+  const CHIPS = [
+    ...(Object.keys(DEGREE) as Degree[]).filter((d) => (profile?.target_degrees ?? ['thesis_masters', 'phd']).includes(d)).map((d) => ({ key: 'degree', value: d, label: DEGREE[d] })),
+    ...(profile?.target_countries ?? ['US', 'CA']).map((c) => ({ key: 'country', value: c, label: COUNTRY[c] ?? c })),
+  ]
   const [text, setText] = useState('')
   const [chips, setChips] = useState<Record<string, string>>({})
   const submit = (e: React.FormEvent) => {
@@ -185,6 +182,45 @@ function blockers(opps: Opportunity[]) {
   return [...map.entries()].sort((a, b) => b[1].length - a[1].length)
 }
 
+/** First-run checklist: shown until every step is done, so a fresh install leads somewhere. */
+function GetStarted({ hasProfile, profileLoading, opportunities }: { hasProfile: boolean; profileLoading: boolean; opportunities: number }) {
+  const ai = useQuery({ queryKey: ['llm-settings'], queryFn: api.llmSettings })
+  const profs = useQuery({ queryKey: ['professors', 'directory'], queryFn: () => api.professors(200) })
+  if (profileLoading || !ai.data || !profs.data) return null
+  const chat = ai.data.providers.find((p) => p.id === ai.data.provider)
+  const aiReady = ai.data.provider === 'openai_compatible' ? !!ai.data.base_url : !!(chat?.key_saved || chat?.key_in_env)
+  const steps = [
+    { done: aiReady, title: 'Connect an AI provider', detail: 'Gemini, OpenAI, Claude or a local model. Used to read pages and draft emails.', to: '/settings#ai' },
+    { done: hasProfile, title: 'Fill in your academic profile', detail: 'Education, tests, research interests and your study plan.', to: '/profile' },
+    { done: profs.data.length > 0, title: 'Find researchers', detail: 'Search OpenAlex by research area, or add one professor’s page.', to: '/researchers#add' },
+    { done: opportunities > 0, title: 'Evaluate their programs', detail: 'Checks funding, deadlines and requirements, then ranks everything.', to: '/researchers#evaluate' },
+  ]
+  if (steps.every((s) => s.done)) return null
+  const next = steps.findIndex((s) => !s.done)
+  return (
+    <section aria-labelledby="get-started" className="sheet p-5 sm:p-6">
+      <h2 id="get-started" className="text-xl">Get started</h2>
+      <p className="mt-1 text-sm text-muted-foreground">Four steps from an empty install to a ranked shortlist.</p>
+      <ol className="mt-4 grid gap-2 md:grid-cols-2">
+        {steps.map((s, i) => (
+          <li key={s.title}>
+            <Link to={s.to} className={cn('flex h-full gap-3 rounded-xl border px-4 py-3 transition-colors focus-visible:outline-2 focus-visible:outline-ring',
+              i === next ? 'border-signal bg-accent-soft' : 'border-border hover:border-input')}>
+              <span className={cn('grid size-6 shrink-0 place-items-center rounded-full text-xs font-semibold', s.done ? 'bg-success text-white' : i === next ? 'bg-signal text-signal-ink' : 'bg-well text-muted-foreground')}>
+                {s.done ? <Check aria-hidden className="size-3.5" /> : i + 1}
+              </span>
+              <span>
+                <span className={cn('block text-sm font-medium', s.done ? 'text-muted-foreground line-through' : 'text-foreground')}>{s.title}{s.done && <span className="sr-only"> (done)</span>}</span>
+                <span className="block text-xs text-muted-foreground">{s.detail}</span>
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ol>
+    </section>
+  )
+}
+
 export function DashboardPage() {
   const opps = useQuery({ queryKey: ['opportunities'], queryFn: () => api.opportunities(true) })
   const apps = useQuery({ queryKey: ['applications'], queryFn: api.applications })
@@ -219,7 +255,8 @@ export function DashboardPage() {
         <p className="mt-1 text-lg text-ink-soft">Your research journey, in one place.</p>
       </header>
 
-      <SearchHero />
+      <GetStarted hasProfile={!!profile.data} profileLoading={profile.isLoading} opportunities={all.length} />
+      <SearchHero profile={profile.data} />
 
       <section aria-label="Summary" className="sheet grid divide-y divide-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
         <Metric to="/opportunities" icon={Telescope} tint="bg-accent-soft text-signal" value={opps.isLoading ? '–' : shortlist.length} label="Potential matches" note="Eligible or likely eligible" />

@@ -7,7 +7,6 @@ from urllib.parse import urlsplit
 
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.core.security import UnsafeURLError, canonicalize_url
 from app.db.models import Professor, University
 from app.services import extraction, ingestion, llm
@@ -67,9 +66,9 @@ def find_faculty_page(db: Session, professor_id: uuid.UUID) -> PageSearchOutcome
         university=university.name if university else "an unknown university",
         n=MAX_CANDIDATES,
     )
-    text, queries = llm.search_text(prompt, settings.extraction_model)
+    text, queries = llm.search_text(prompt)
     if not candidate_urls(text):  # grounded replies are occasionally empty; one retry is cheap
-        text, queries = llm.search_text(prompt, settings.extraction_model)
+        text, queries = llm.search_text(prompt)
     outcome = PageSearchOutcome("not_found", search_queries=queries, answer=text[:500])
     for url in candidate_urls(text):
         try:

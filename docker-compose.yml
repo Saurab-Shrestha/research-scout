@@ -1,11 +1,13 @@
 # docker compose up --build   then open http://localhost:8000
-# Needs POSTGRES_PASSWORD plus the API keys in .env (see .env.example).
+# Needs POSTGRES_PASSWORD in .env (see .env.example). Add your AI provider key in the app under Settings.
 x-app: &app
   build: .
   image: research-scout:local
   env_file: .env
   environment:
     DATABASE_URL: postgresql+psycopg://scout:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db/research_scout
+  extra_hosts:
+    - "host.docker.internal:host-gateway"  # reach a local model server (Ollama, LM Studio) on Linux too
   restart: unless-stopped
 
 services:

@@ -30,6 +30,9 @@ class CandidateProfile(Entity, Base):
     career_goals: Mapped[str | None] = mapped_column(Text)
     intended_start_term: Mapped[str | None]
     funding_preferences_json: Mapped[dict] = mapped_column(default=dict)
+    # Study plan: which degrees and countries the search aims at.
+    target_degrees: Mapped[list] = mapped_column(default=lambda: ["thesis_masters", "phd"], server_default='["thesis_masters", "phd"]')
+    target_countries: Mapped[list] = mapped_column(default=lambda: ["US", "CA"], server_default='["US", "CA"]')
     # ponytail: embeddings as JSONB lists, compared in Python; move to pgvector past ~100k vectors.
     interest_embeddings: Mapped[dict | None]  # {interest text: vector}
 
@@ -160,7 +163,7 @@ class Program(Entity, Base):
     university_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("universities.id"))
     name: Mapped[str]
     normalized_name: Mapped[str]
-    degree_type: Mapped[str]  # phd | thesis_masters | course_masters
+    degree_type: Mapped[str]  # bachelors | course_masters | thesis_masters | phd
     department: Mapped[str | None]  # as known when searched; reuses the program for colleagues
     url: Mapped[str | None]
     deadline: Mapped[date | None]
@@ -254,3 +257,12 @@ class Draft(Entity, Base):
     # What the draft was generated from: profile snapshot time, papers offered, program and its source pages,
     # plus the exact context text sent to the model. Makes every claim traceable (Planning §5.3).
     context_json: Mapped[dict] = mapped_column(default=dict)
+
+
+class AppSetting(Base):
+    """User-editable settings that override .env, e.g. the LLM provider and its keys (key "llm")."""
+    __tablename__ = "app_settings"
+
+    key: Mapped[str] = mapped_column(primary_key=True)
+    value: Mapped[dict] = mapped_column(default=dict)
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())

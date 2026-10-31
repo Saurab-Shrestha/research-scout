@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.countries import CountryCode
 from app.db.models import JobEvent, ResearchJob
 from app.db.session import get_db
+from app.schemas.profile import DegreeType
 
 router = APIRouter(prefix="/research-jobs", tags=["research-jobs"])
 
@@ -18,7 +19,7 @@ class DiscoveryRequest(BaseModel):
     job_type: Literal["discovery"] = "discovery"
     query: str | None = None
     countries: list[CountryCode] = Field(["US", "CA"], min_length=1)
-    degree_types: list[Literal["phd", "thesis_masters", "course_masters"]] = ["phd", "thesis_masters"]
+    degree_types: list[DegreeType] = ["phd", "thesis_masters"]
     research_areas: list[str] = []
     funding_priority: Literal["full_funding", "any"] = "full_funding"
     seed_urls: list[str] = []

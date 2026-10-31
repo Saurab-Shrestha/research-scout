@@ -13,11 +13,19 @@ class Settings(BaseSettings):
     contact_email: str = ""
     openalex_api_key: str = ""  # free key: https://openalex.org/settings/api
 
+    # LLM defaults. Settings → AI provider in the app overrides these (stored in the database).
+    llm_provider: str = "gemini"  # gemini | openai | anthropic | openai_compatible
+    extraction_model: str = ""  # empty: the provider's default model
     google_api_key: str = ""
     google_genai_use_vertexai: bool = True  # Vertex AI express mode
-    extraction_model: str = "gemini-3.8-flash"
+    openai_api_key: str = ""
+    anthropic_api_key: str = ""
+    openai_compatible_base_url: str = ""  # e.g. http://localhost:11434/v1 for Ollama
+    openai_compatible_api_key: str = ""
+    embedding_provider: str = "gemini"  # gemini | openai | openai_compatible
+    embedding_model: str = ""
     extraction_max_chars: int = 60_000
-    # Prices for job cost reporting; copy from your Vertex AI pricing page. 0 = cost not tracked.
+    # Prices for job cost reporting, from your provider's pricing page. 0 = cost not tracked.
     llm_usd_per_million_input: float = 0.0
     llm_usd_per_million_output: float = 0.0
     grounded_search_usd_each: float = 0.0

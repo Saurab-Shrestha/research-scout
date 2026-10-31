@@ -20,16 +20,17 @@ from app.services import ingestion, llm, page_finder
 from app.services.extraction import _is_supported, _norm, _same_university, _ensure_aliases
 from app.services.fetcher import FetchError
 
-DEGREE_LABELS = {"phd": "PhD", "thesis_masters": "research (thesis-based) master's", "course_masters": "course-based master's"}
+DEGREE_LABELS = {"phd": "PhD", "thesis_masters": "research (thesis-based) master's", "course_masters": "course-based master's",
+                 "bachelors": "bachelor's (undergraduate)"}
 MAX_PAGES = 4
 REVERIFY_AFTER = timedelta(days=30)
 RETRY_DEFAULT_ONLY_AFTER = timedelta(days=1)  # no official page found: try again tomorrow, not every run
 
-SEARCH_PROMPT = """Find the official graduate admissions and funding pages for the {degree} program at
-{university} in which {professor} (department: {department}) supervises graduate students.
+SEARCH_PROMPT = """Find the official {level} admissions and funding pages for the {degree} program at
+{university} {where}.
 
-I need pages stating: funding guarantees or stipend amounts, tuition coverage, application
-deadlines for {term}, English language test requirements (TOEFL, IELTS, PTE) and minimum GPA.
+I need pages stating: {funding}, tuition coverage, application deadlines for {term},
+English language test requirements (TOEFL, IELTS, PTE) and {grades}.
 Return up to {n} URLs on the university's own website, best first, one per line, nothing else."""
 
 # §7.2 defaults when no verified page evidence exists, by funding system (core/countries.py):
@@ -228,13 +229,18 @@ def verify_program(db: Session, professor_id: uuid.UUID, degree_type: str, inten
     if cached:
         return ProgramOutcome(cached.id, "cached")
 
+    undergrad = degree_type == "bachelors"
     search = SEARCH_PROMPT.format(
-        degree=DEGREE_LABELS[degree_type], university=university.name, professor=professor.name,
-        department=department or "unknown", term=intended_term or "the next intake", n=MAX_PAGES,
+        level="undergraduate" if undergrad else "graduate", degree=DEGREE_LABELS[degree_type], university=university.name,
+        where=(f"in the department of {department}" if undergrad and department else "" if undergrad
+               else f"in which {professor.name} (department: {department or 'unknown'}) supervises graduate students"),
+        funding="scholarships for international students" if undergrad else "funding guarantees or stipend amounts",
+        grades="minimum secondary-school grades" if undergrad else "minimum GPA",
+        term=intended_term or "the next intake", n=MAX_PAGES,
     )
-    text, _ = llm.search_text(search, settings.extraction_model)
+    text, _ = llm.search_text(search)
     if not page_finder.candidate_urls(text):  # grounded replies are occasionally empty
-        text, _ = llm.search_text(search, settings.extraction_model)
+        text, _ = llm.search_text(search)
 
     _ensure_aliases(db, university)
     trusted_domains = {_registrable(urlsplit(u).hostname) for u in (professor.faculty_url, university.website_url) if u}
@@ -244,7 +250,7 @@ def verify_program(db: Session, professor_id: uuid.UUID, degree_type: str, inten
             source, _ = ingestion.ingest_url(db, url)
             page_text = (source.extracted_text or source.raw_content)[: settings.extraction_max_chars]
             result = llm.generate_structured(prompt.SYSTEM, prompt.build_user_message(source.canonical_url, page_text),
-                                             ProgramExtraction, settings.extraction_model)
+                                             ProgramExtraction)
         except (FetchError, UnsafeURLError, llm.LLMError) as e:
             pages.append({"url": url, "result": f"failed: {e}"})
             continue

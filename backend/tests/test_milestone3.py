@@ -149,7 +149,7 @@ def seed():
 
 def test_evaluation_job_verifies_program_and_ranks(client, monkeypatch):
     prof_id = seed()
-    monkeypatch.setattr(llm, "search_text", lambda prompt, model: ("https://grad.example.edu/phd", []))
+    monkeypatch.setattr(llm, "search_text", lambda prompt, model=None: ("https://grad.example.edu/phd", []))
     monkeypatch.setattr(ingestion, "fetch_public_page", lambda url: FetchResult(url, 200, "text/plain", ADMISSIONS))
     monkeypatch.setattr(llm, "generate_structured", lambda *a: llm.LLMResult(program_extraction(), "m", 1, 1))
     monkeypatch.setattr(llm, "embed", lambda texts: [[1.0, 0.0] for _ in texts])
@@ -197,7 +197,7 @@ def test_reverify_with_new_program_name_keeps_one_opportunity(client, monkeypatc
     for i, name in enumerate(["PhD in Computer Science", "Doctor of Philosophy (PhD)"]):
         ex = program_extraction()
         ex.program_name = claim(name, "Graduate Admissions")
-        monkeypatch.setattr(llm, "search_text", lambda prompt, model, i=i: (f"https://grad.example.edu/phd{i}", []))
+        monkeypatch.setattr(llm, "search_text", lambda prompt, model=None, i=i: (f"https://grad.example.edu/phd{i}", []))
         monkeypatch.setattr(llm, "generate_structured", lambda *a, ex=ex: llm.LLMResult(ex, "m", 1, 1))
         with SessionLocal() as db:
             job = ResearchJob(job_type="evaluation", status="running", attempts=1,
@@ -225,7 +225,7 @@ def test_network_errors_become_llm_errors(monkeypatch):
 
 def test_rerun_quoting_less_keeps_earlier_verified_funding(client, monkeypatch):
     prof_id = seed()
-    monkeypatch.setattr(llm, "search_text", lambda prompt, model: ("https://grad.example.edu/phd", []))
+    monkeypatch.setattr(llm, "search_text", lambda prompt, model=None: ("https://grad.example.edu/phd", []))
     monkeypatch.setattr(ingestion, "fetch_public_page", lambda url: FetchResult(url, 200, "text/plain", ADMISSIONS))
     monkeypatch.setattr(llm, "embed", lambda texts: [[1.0, 0.0] for _ in texts])
 
@@ -240,7 +240,7 @@ def test_rerun_quoting_less_keeps_earlier_verified_funding(client, monkeypatch):
 
     run(program_extraction())
     # Second run on a different page quotes only the stipend, not the guarantee or tuition
-    monkeypatch.setattr(llm, "search_text", lambda prompt, model: ("https://grad.example.edu/other", []))
+    monkeypatch.setattr(llm, "search_text", lambda prompt, model=None: ("https://grad.example.edu/other", []))
     weaker = program_extraction()
     weaker.guaranteed_funding, weaker.tuition_coverage = claim(), claim()
     run(weaker)
@@ -258,7 +258,7 @@ def test_parallel_run_covers_every_university_and_caches_default_only(client, mo
         db.commit()
         ids = [str(prof_id), str(prof2.id)]
     searches = []
-    monkeypatch.setattr(llm, "search_text", lambda prompt, model: (searches.append(prompt), ("no pages found", []))[1])
+    monkeypatch.setattr(llm, "search_text", lambda prompt, model=None: (searches.append(prompt), ("no pages found", []))[1])
     monkeypatch.setattr(llm, "embed", lambda texts: [[1.0, 0.0] for _ in texts])
 
     def run():
@@ -281,6 +281,7 @@ def test_llm_client_is_shared_across_threads(monkeypatch):
     from concurrent.futures import ThreadPoolExecutor
     import time
     llm._make_client.cache_clear()
+    monkeypatch.setattr(llm, "config", lambda: llm.Config(keys={"gemini": "k"}))
     monkeypatch.setattr(llm.genai, "Client", lambda **kw: (time.sleep(0.05), object())[1])
     with ThreadPoolExecutor(8) as pool:
         clients = list(pool.map(lambda _: llm._client(), range(8)))
@@ -294,14 +295,14 @@ def test_worker_records_llm_usage_and_cost(monkeypatch):
     monkeypatch.setattr(settings, "llm_usd_per_million_input", 1.0)
     monkeypatch.setattr(settings, "llm_usd_per_million_output", 2.0)
     monkeypatch.setattr(settings, "grounded_search_usd_each", 0.01)
+    llm.reset_config()
 
     class FakeGraph:
         def get_state(self, config):
             return SimpleNamespace(next=())
 
         def invoke(self, state, config):
-            llm._meter(SimpleNamespace(usage_metadata=SimpleNamespace(prompt_token_count=1_000_000,
-                                                                     candidates_token_count=500_000)), searches=3)
+            llm._meter(1_000_000, 500_000, searches=3)
             return {"result_summary": {}}
 
     with SessionLocal() as db:
@@ -328,3 +329,35 @@ def test_studying_in_the_program_country_makes_you_domestic():
     profile = {"education": [{"degree": "BSc", "country": "DE"}], "test_scores": []}
     assert not eligibility.is_international(profile, "DE")
     assert eligibility.is_international(profile, "GB")
+
+
+def test_saved_llm_settings_override_env_and_never_return_keys(client, monkeypatch):
+    from app.db.models import CandidateProfile, Publication
+    with SessionLocal() as db:
+        db.add(CandidateProfile(name="Me", interest_embeddings={"x": [1.0]}))
+        db.add(Publication(title="P", embedding=[1.0]))
+        db.commit()
+    r = client.put("/api/v1/settings/llm", json={"provider": "anthropic", "keys": {"anthropic": "sk-secret"},
+                                                 "embedding_provider": "openai"})
+    body = r.json()
+    assert r.status_code == 200 and body["provider"] == "anthropic" and body["embeddings_reset"]
+    assert "sk-secret" not in r.text
+    assert next(p for p in body["providers"] if p["id"] == "anthropic")["key_saved"]
+    cfg = llm.config()
+    assert cfg.keys["anthropic"] == "sk-secret" and cfg.chat_model == "claude-opus-5-5"
+    with SessionLocal() as db:
+        assert db.query(Publication).first().embedding is None
+        assert db.query(CandidateProfile).first().interest_embeddings is None
+    # removing the saved key falls back to .env; same embedding model keeps vectors
+    body = client.put("/api/v1/settings/llm", json={"keys": {"anthropic": ""}}).json()
+    assert not next(p for p in body["providers"] if p["id"] == "anthropic")["key_saved"] and not body["embeddings_reset"]
+    assert client.put("/api/v1/settings/llm", json={"provider": "openai_compatible"}).status_code == 422
+    llm.reset_config()
+
+
+def test_bachelors_entry_and_study_plan_defaults(client):
+    _, checks = eligibility.evaluate(PROFILE, {}, "US", "bachelors", None, TODAY)
+    assert next(c for c in checks if c["name"] == "degree")["status"] == "ok"
+    body = client.put("/api/v1/profile", json={"name": "Me", "target_degrees": ["bachelors"], "target_countries": ["JP"]}).json()
+    assert body["target_degrees"] == ["bachelors"] and body["target_countries"] == ["JP"]
+    assert client.put("/api/v1/profile", json={"name": "Me", "target_degrees": ["diploma"]}).status_code == 422

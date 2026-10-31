@@ -1,6 +1,5 @@
 import uuid
 from datetime import date
-from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -10,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.db.models import (CandidateProfile, Evidence, FundingAssessment, MatchResult, Opportunity, Professor,
                            Program, ResearchJob, Source, University)
 from app.db.session import get_db
+from app.schemas.profile import DegreeType
 from app.services import llm, matching
 
 router = APIRouter(prefix="/opportunities", tags=["opportunities"])
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/opportunities", tags=["opportunities"])
 
 class EvaluateRequest(BaseModel):
     professor_ids: list[uuid.UUID] | None = None  # default: every professor with a known university
-    degree_types: list[Literal["phd", "thesis_masters", "course_masters"]] = ["phd", "thesis_masters"]
+    degree_types: list[DegreeType] | None = None  # default: the profile's study plan
     force: bool = False  # re-verify programs even if checked within the last 30 days
 
 

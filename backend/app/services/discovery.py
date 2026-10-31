@@ -8,7 +8,6 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.db.models import Professor, University
 from app.prompts import topic_planner
 from app.services import llm, openalex, publications
@@ -179,7 +178,6 @@ def choose_topics(research_areas: list[str], query: str | None, candidates_per_q
             topic_planner.SYSTEM,
             topic_planner.build_user_message(research_areas, query, list(candidates.values())),
             TopicSelection,
-            settings.extraction_model,
         )
     except llm.LLMError as e:
         return fallback, f"fallback (planner failed: {e})"

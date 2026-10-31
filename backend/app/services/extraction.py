@@ -3,7 +3,6 @@
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from urllib.parse import urlsplit
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
@@ -158,7 +157,6 @@ def extract_source(db: Session, source_id: uuid.UUID, expected_professor_id: uui
         prompt.SYSTEM,
         prompt.build_user_message(source.url or source.canonical_url, text),
         PageExtraction,
-        settings.extraction_model,
     )
     ex = result.parsed
     page = _norm(text)
