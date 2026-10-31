@@ -69,6 +69,8 @@ export interface Draft {
   cited_publication_ids: string[]
   warnings: string[]
   model: string
+  prompt_version: string
+  sources: { profile_updated_at?: string | null; publication_ids?: string[]; program_source_ids?: string[]; funding_evidence_ids?: string[] }
   created_at: string
 }
 

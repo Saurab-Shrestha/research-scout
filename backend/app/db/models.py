@@ -251,3 +251,6 @@ class Draft(Entity, Base):
     warnings: Mapped[list] = mapped_column(default=list)
     model: Mapped[str]
     prompt_version: Mapped[str]
+    # What the draft was generated from: profile snapshot time, papers offered, program and its source pages,
+    # plus the exact context text sent to the model. Makes every claim traceable (Planning §5.3).
+    context_json: Mapped[dict] = mapped_column(default=dict)

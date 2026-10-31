@@ -28,7 +28,7 @@ def _papers(db: Session, opportunity: Opportunity) -> list[Publication]:
     return [db.get(Publication, i) for i in ordered]
 
 
-def build_context(db: Session, opportunity: Opportunity, profile: CandidateProfile) -> tuple[str, list[Publication]]:
+def build_context(db: Session, opportunity: Opportunity, profile: CandidateProfile) -> tuple[str, list[Publication], dict]:
     professor = db.get(Professor, opportunity.professor_id)
     program = db.get(Program, opportunity.program_id)
     university = db.get(University, program.university_id)
@@ -47,7 +47,12 @@ def build_context(db: Session, opportunity: Opportunity, profile: CandidateProfi
                     "supervisor_required_before_admission": (program.requirements_json or {}).get("supervisor_required"),
                     "funding_status": funding.funding_status if funding else None},
     }
-    return "\n\n".join(f"{k}:\n{json.dumps(v, ensure_ascii=False, default=str)}" for k, v in sections.items()), papers
+    text = "\n\n".join(f"{k}:\n{json.dumps(v, ensure_ascii=False, default=str)}" for k, v in sections.items())
+    trace = {"profile_id": str(profile.id), "profile_updated_at": profile.updated_at.isoformat() if profile.updated_at else None,
+             "professor_id": str(professor.id), "publication_ids": [str(p.id) for p in papers],
+             "program_id": str(program.id), "program_source_ids": program.source_ids or [],
+             "funding_evidence_ids": (funding.evidence_ids or []) if funding else [], "context": text}
+    return text, papers, trace
 
 
 def _check_citations(cited: list[str], papers: list[Publication]) -> tuple[list[str], list[str]]:
@@ -67,7 +72,7 @@ def _sop_markdown(outline: SopOutline) -> str:
 
 
 def generate_draft(db: Session, opportunity: Opportunity, profile: CandidateProfile, kind: str) -> Draft:
-    context, papers = build_context(db, opportunity, profile)
+    context, papers, trace = build_context(db, opportunity, profile)
     if kind == "email":
         result = llm.generate_structured(prompt.EMAIL_SYSTEM, context, EmailDraft, settings.extraction_model)
         subject, body = result.parsed.subject, result.parsed.body
@@ -82,7 +87,7 @@ def generate_draft(db: Session, opportunity: Opportunity, profile: CandidateProf
     if not papers:
         warnings.append("No stored publications for this professor; refresh publications for a specific email.")
     draft = Draft(opportunity_id=opportunity.id, kind=kind, subject=subject, body=body, cited_publication_ids=ids,
-                  warnings=warnings, model=result.model, prompt_version=prompt.VERSION)
+                  warnings=warnings, model=result.model, prompt_version=prompt.VERSION, context_json=trace)
     db.add(draft)
     db.commit()
     return draft

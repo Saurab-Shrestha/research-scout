@@ -49,7 +49,9 @@ from your Vertex AI pricing page; left blank, cost stays 0 and only tokens are t
 ## Test
 
 ```bash
-uv run pytest
+uv run pytest                    # backend, includes the offline identity eval
+(cd web && npm run e2e)          # browser smoke test; needs the API and `npm run dev` running
+cd backend && uv run python -m evals.identity   # identity-resolution report
 ```
 
 ## Status

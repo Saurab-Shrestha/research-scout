@@ -43,6 +43,9 @@ def test_email_draft_flags_invented_citations_and_saves_edits(client, monkeypatc
     assert len(draft["cited_publication_ids"]) == 1
     assert any("A Paper That Does Not Exist" in w for w in draft["warnings"])
     assert any("placeholders" in w for w in draft["warnings"])
+    sources = draft["sources"]  # traceable to the profile, papers and program pages it was built from
+    assert sources["profile_id"] and sources["program_id"] and len(sources["publication_ids"]) == 1
+    assert sources["program_source_ids"] and "context" not in sources
 
     edited = client.patch(f"/api/v1/drafts/{draft['id']}", json={"body": "Dear Professor Lovelace, ..."}).json()
     assert edited["body"].startswith("Dear Professor") and edited["subject"] == "PhD Fall 2027 inquiry"

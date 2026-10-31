@@ -157,6 +157,13 @@ function Editor({ opp, kind }: { opp: Opportunity; kind: Draft['kind'] }) {
           </>
         )}
       </div>
+      {current.sources.publication_ids && (
+        <p className="text-xs text-muted-foreground">
+          Built from your profile{current.sources.profile_updated_at ? ` as saved ${new Date(current.sources.profile_updated_at).toLocaleDateString()}` : ''},
+          {' '}{current.sources.publication_ids.length} of their papers and {current.sources.program_source_ids?.length ?? 0} official program pages
+          {' '}· {current.model} · {current.prompt_version}
+        </p>
+      )}
       <p className="text-xs text-muted-foreground">Drafts are never sent for you. Check the facts, add one specific detail of your own, then send it from your email.</p>
     </div>
   )

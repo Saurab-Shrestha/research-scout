@@ -17,3 +17,13 @@ def test_summary_splits_reviewed_and_counts_evidence():
     s = summarize(results)
     assert s["errors"] == 1 and s["reviewed_field_accuracy"] == 1.0 and s["program_field_accuracy"] == 0.0
     assert s["evidence_coverage"] == 0.75
+
+
+def test_identity_resolution_never_picks_a_namesake():
+    from evals.identity import load, run
+    cases = load()
+    summary = run(cases)
+    assert summary["precision"] == 1.0, summary["wrong"]  # attaching someone else's papers is the costly error
+    assert summary["accuracy"] >= 0.95  # Planning §5.3 identity target
+    reviewed = {c["id"] for c in cases if c["reviewed"]}
+    assert not [r for r in summary["abstained"] + summary["wrong"] if r["id"] in reviewed]

@@ -1,0 +1,1438 @@
+[
+ {
+  "id": "Alan Yuille",
+  "name": "Alan Yuille",
+  "institution_id": "I145311948",
+  "university": "Johns Hopkins University",
+  "expected": "A5086706224",
+  "reviewed": false,
+  "candidates": [
+   {
+    "openalex_id": "A5086706224",
+    "name": "Alan Yuille",
+    "orcid": "0000-0001-5207-9249",
+    "works_count": 1177,
+    "current_institution_ids": [
+     "I1311269955",
+     "I145311948",
+     "I2802946424"
+    ]
+   },
+   {
+    "openalex_id": "A5125128549",
+    "name": "Alan Yuille",
+    "orcid": null,
+    "works_count": 1,
+    "current_institution_ids": []
+   },
+   {
+    "openalex_id": "A5142471017",
+    "name": "Alan Yuille",
+    "orcid": null,
+    "works_count": 1,
+    "current_institution_ids": []
+   },
+   {
+    "openalex_id": "A5017734021",
+    "name": "L Yuille Alan",
+    "orcid": null,
+    "works_count": 3,
+    "current_institution_ids": []
+   }
+  ]
+ },
+ {
+  "id": "Alexey Vyacheslavovich Gorshkov",
+  "name": "Alexey Vyacheslavovich Gorshkov",
+  "institution_id": "I66946132",
+  "university": "University of Maryland, College Park",
+  "expected": "A5002067971",
+  "reviewed": false,
+  "candidates": [
+   {
+    "openalex_id": "A5002067971",
+    "name": "Alexey Vyacheslavovich Gorshkov",
+    "orcid": "0000-0003-0509-3421",
+    "works_count": 435,
+    "current_institution_ids": [
+     "I1321296531",
+     "I4210108409",
+     "I4210151733",
+     "I66946132"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "Dirk Englund",
+  "name": "Dirk Englund",
+  "institution_id": "I63966007",
+  "university": "Massachusetts Institute of Technology",
+  "expected": "A5049120533",
+  "reviewed": false,
+  "candidates": [
+   {
+    "openalex_id": "A5049120533",
+    "name": "Dirk Englund",
+    "orcid": "0000-0002-1043-3489",
+    "works_count": 1042,
+    "current_institution_ids": [
+     "I4210110987",
+     "I4210112840",
+     "I63966007"
+    ]
+   },
+   {
+    "openalex_id": "A5078467843",
+    "name": "Matthew E. Trusheim",
+    "orcid": "0000-0003-3197-5989",
+    "works_count": 145,
+    "current_institution_ids": [
+     "I166416128",
+     "I2802705668",
+     "I4210088792",
+     "I63966007"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "Don Towsley",
+  "name": "Don Towsley",
+  "institution_id": "I24603500",
+  "university": "University of Massachusetts Amherst",
+  "expected": "A5036683370",
+  "reviewed": false,
+  "candidates": [
+   {
+    "openalex_id": "A5036683370",
+    "name": "Don Towsley",
+    "orcid": "0000-0002-7808-7375",
+    "works_count": 1217,
+    "current_institution_ids": [
+     "I177605424",
+     "I24603500"
+    ]
+   },
+   {
+    "openalex_id": "A5128971745",
+    "name": "Don Towsley",
+    "orcid": null,
+    "works_count": 8,
+    "current_institution_ids": []
+   },
+   {
+    "openalex_id": "A5124151592",
+    "name": "Don Towsley",
+    "orcid": null,
+    "works_count": 1,
+    "current_institution_ids": []
+   },
+   {
+    "openalex_id": "A5157710397",
+    "name": "Don Towsley",
+    "orcid": null,
+    "works_count": 2,
+    "current_institution_ids": []
+   },
+   {
+    "openalex_id": "A5143090934",
+    "name": "Don Towsley",
+    "orcid": null,
+    "works_count": 3,
+    "current_institution_ids": []
+   },
+   {
+    "openalex_id": "A5144469606",
+    "name": "Liang Ma, Ting He, Kin K. Leung, Don Towsley, Ananthram Swami",
+    "orcid": null,
+    "works_count": 1,
+    "current_institution_ids": []
+   }
+  ]
+ },
+ {
+  "id": "Franco Nori",
+  "name": "Franco Nori",
+  "institution_id": "I27837315",
+  "university": "University of Michigan",
+  "expected": "A5048800312",
+  "reviewed": false,
+  "candidates": [
+   {
+    "openalex_id": "A5048800312",
+    "name": "Franco Nori",
+    "orcid": "0000-0003-3682-7432",
+    "works_count": 1422,
+    "current_institution_ids": [
+     "I27837315",
+     "I4210110652",
+     "I4210143490",
+     "I4210162022",
+     "I4210165842",
+     "I4387156398"
+    ]
+   },
+   {
+    "openalex_id": "A5106431686",
+    "name": "Nori Franco",
+    "orcid": null,
+    "works_count": 9,
+    "current_institution_ids": []
+   },
+   {
+    "openalex_id": "A5129682591",
+    "name": "Franco Nori",
+    "orcid": null,
+    "works_count": 15,
+    "current_institution_ids": [
+     "I27837315",
+     "I4210100960",
+     "I4210110652",
+     "I4210162022",
+     "I4210165842",
+     "I4387156398",
+     "I87445476"
+    ]
+   },
+   {
+    "openalex_id": "A5102435973",
+    "name": "Franco Nori",
+    "orcid": null,
+    "works_count": 13,
+    "current_institution_ids": []
+   },
+   {
+    "openalex_id": "A5145481530",
+    "name": "Franco Nori; &lt;p&gt;RIKEN, Japan&lt;/p&gt;&lt;p&gt;University of Michigan, USA&lt;/p&gt;",
+    "orcid": null,
+    "works_count": 1,
+    "current_institution_ids": []
+   }
+  ]
+ },
+ {
+  "id": "Frederic T. Chong",
+  "name": "Frederic T. Chong",
+  "institution_id": "I40347166",
+  "university": "University of Chicago",
+  "expected": "A5083979678",
+  "reviewed": false,
+  "candidates": [
+   {
+    "openalex_id": "A5083979678",
+    "name": "Frederic T. Chong",
+    "orcid": "0000-0001-9282-4645",
+    "works_count": 488,
+    "current_institution_ids": [
+     "I2802946424",
+     "I40347166"
+    ]
+   },
+   {
+    "openalex_id": "A5054479968",
+    "name": "F. Teppe",
+    "orcid": "0000-0002-1516-2112",
+    "works_count": 380,
+    "current_institution_ids": [
+     "I1294671590",
+     "I19894307",
+     "I4210128986",
+     "I4387153574"
+    ]
+   },
+   {
+    "openalex_id": "A5069999299",
+    "name": "T Chong Frederic",
+    "orcid": null,
+    "works_count": 1,
+    "current_institution_ids": []
+   }
+  ]
+ },
+ {
+  "id": "Jonathan Li",
+  "name": "Jonathan Li",
+  "institution_id": "I151746483",
+  "university": "University of Waterloo",
+  "expected": "A5100613889",
+  "reviewed": false,
+  "candidates": [
+   {
+    "openalex_id": "A5100613889",
+    "name": "Jonathan Li",
+    "orcid": "0000-0001-7899-0049",
+    "works_count": 752,
+    "current_institution_ids": [
+     "I151746483",
+     "I191208505",
+     "I25355098"
+    ]
+   },
+   {
+    "openalex_id": "A5038377747",
+    "name": "Jonathan Z. Li",
+    "orcid": "0000-0001-9914-9662",
+    "works_count": 286,
+    "current_institution_ids": [
+     "I1283280774",
+     "I136199984",
+     "I2801645848"
+    ]
+   },
+   {
+    "openalex_id": "A5084939934",
+    "name": "Ke Li",
+    "orcid": "0000-0002-9181-3562",
+    "works_count": 252,
+    "current_institution_ids": [
+     "I151746483",
+     "I200845125",
+     "I3923682",
+     "I4210133251",
+     "I4210153519",
+     "I66867065"
+    ]
+   },
+   {
+    "openalex_id": "A5009848674",
+    "name": "A. Paul Alivisatos",
+    "orcid": "0000-0001-6895-9048",
+    "works_count": 753,
+    "current_institution_ids": [
+     "I40347166",
+     "I95457486"
+    ]
+   },
+   {
+    "openalex_id": "A5059276423",
+    "name": "Jonathan Gang Li",
+    "orcid": "0009-0001-1249-6520",
+    "works_count": 172,
+    "current_institution_ids": [
+     "I2800717037",
+     "I33213144"
+    ]
+   },
+   {
+    "openalex_id": "A5035687175",
+    "name": "Mark E. Thompson",
+    "orcid": "0000-0002-7764-4096",
+    "works_count": 716,
+    "current_institution_ids": [
+     "I1174212"
+    ]
+   },
+   {
+    "openalex_id": "A5045563095",
+    "name": "P. Jonathan Li",
+    "orcid": "0000-0002-5204-6401",
+    "works_count": 17,
+    "current_institution_ids": [
+     "I180670191"
+    ]
+   },
+   {
+    "openalex_id": "A5044665018",
+    "name": "Michael Jonathan Li",
+    "orcid": "0000-0003-2457-604x",
+    "works_count": 58,
+    "current_institution_ids": [
+     "I161318765"
+    ]
+   },
+   {
+    "openalex_id": "A5079618096",
+    "name": "Jiafu Ji",
+    "orcid": "0000-0001-6878-5543",
+    "works_count": 746,
+    "current_institution_ids": [
+     "I20231570",
+     "I4210093964",
+     "I4210147617"
+    ]
+   },
+   {
+    "openalex_id": "A5102798483",
+    "name": "Lin He",
+    "orcid": "0000-0003-1079-1195",
+    "works_count": 662,
+    "current_institution_ids": [
+     "I151075929",
+     "I180726961",
+     "I183067930",
+     "I183519381",
+     "I187400657",
+     "I4210101984",
+     "I4210117763",
+     "I4210154890",
+     "I4210163952"
+    ]
+   },
+   {
+    "openalex_id": "A5100613895",
+    "name": "Jonathan Li",
+    "orcid": "0000-0002-8004-0015",
+    "works_count": 46,
+    "current_institution_ids": [
+     "I151746483",
+     "I180670191"
+    ]
+   },
+   {
+    "openalex_id": "A5036925485",
+    "name": "J B Li",
+    "orcid": "0000-0003-3530-7662",
+    "works_count": 68,
+    "current_institution_ids": [
+     "I151746483",
+     "I153473198",
+     "I165932596",
+     "I170215575",
+     "I17056963",
+     "I204983213",
+     "I22716506",
+     "I25355098",
+     "I25757504",
+     "I277688954",
+     "I2800710378",
+     "I31637741",
+     "I31683504",
+     "I4210107733",
+     "I4210119942",
+     "I4210125878",
+     "I4387155539",
+     "I4392738113",
+     "I4405259098",
+     "I4405269742",
+     "I4405278299",
+     "I55654194",
+     "I82880672",
+     "I88467170",
+     "I92178344"
+    ]
+   },
+   {
+    "openalex_id": "A5120908478",
+    "name": "Jonathan Li",
+    "orcid": null,
+    "works_count": 2,
+    "current_institution_ids": []
+   },
+   {
+    "openalex_id": "A5003468680",
+    "name": "Jonathan Li",
+    "orcid": "0000-0001-7899-0049",
+    "works_count": 20,
+    "current_institution_ids": [
+     "I151746483",
+     "I66867065"
+    ]
+   },
+   {
+    "openalex_id": "A5121094351",
+    "name": "Jonathan Li",
+    "orcid": null,
+    "works_count": 1,
+    "current_institution_ids": [
+     "I151746483"
+    ]
+   },
+   {
+    "openalex_id": "A5157843317",
+    "name": "Jonathan Li",
+    "orcid": null,
+    "works_count": 1,
+    "current_institution_ids": [
+     "I151746483",
+     "I66867065"
+    ]
+   },
+   {
+    "openalex_id": "A5124631457",
+    "name": "Jonathan Li",
+    "orcid": null,
+    "works_count": 1,
+    "current_institution_ids": [
+     "I151746483"
+    ]
+   },
+   {
+    "openalex_id": "A5152735466",
+    "name": "Jonathan Li",
+    "orcid": null,
+    "works_count": 1,
+    "current_institution_ids": [
+     "I151746483"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "Liang Jiang",
+  "name": "Liang Jiang",
+  "institution_id": "I40347166",
+  "university": "University of Chicago",
+  "expected": "A5068826612",
+  "reviewed": false,
+  "candidates": [
+   {
+    "openalex_id": "A5001392142",
+    "name": "Hualiang Jiang",
+    "orcid": "0000-0003-0656-6315",
+    "works_count": 962,
+    "current_institution_ids": [
+     "I143593769",
+     "I19820366",
+     "I4210112820",
+     "I4391767758"
+    ]
+   },
+   {
+    "openalex_id": "A5068826612",
+    "name": "Liang Jiang",
+    "orcid": "0000-0002-0000-9342",
+    "works_count": 530,
+    "current_institution_ids": [
+     "I40347166"
+    ]
+   },
+   {
+    "openalex_id": "A5024217994",
+    "name": "Liang Jiang",
+    "orcid": "0000-0002-7231-9462",
+    "works_count": 261,
+    "current_institution_ids": [
+     "I4800084"
+    ]
+   },
+   {
+    "openalex_id": "A5087914705",
+    "name": "Hongliang Jiang",
+    "orcid": "0000-0002-5243-3524",
+    "works_count": 159,
+    "current_institution_ids": [
+     "I143593769"
+    ]
+   },
+   {
+    "openalex_id": "A5101604101",
+    "name": "Hua Liang Jiang",
+    "orcid": "0000-0002-7561-3085",
+    "works_count": 144,
+    "current_institution_ids": [
+     "I176453806"
+    ]
+   },
+   {
+    "openalex_id": "A5031255136",
+    "name": "Wenhua Liang",
+    "orcid": "0000-0002-1391-8238",
+    "works_count": 527,
+    "current_institution_ids": [
+     "I183067930",
+     "I4210098361",
+     "I4210138900",
+     "I4210153371",
+     "I4210154954",
+     "I4210159420",
+     "I4405252760",
+     "I4405273215",
+     "I4405276944",
+     "I58200834",
+     "I92039509"
+    ]
+   },
+   {
+    "openalex_id": "A5084728293",
+    "name": "Dongliang Jiang",
+    "orcid": null,
+    "works_count": 258,
+    "current_institution_ids": [
+     "I4210151615",
+     "I98834328"
+    ]
+   },
+   {
+    "openalex_id": "A5084640582",
+    "name": "Hongliang Jiang",
+    "orcid": "0000-0002-7892-7215",
+    "works_count": 208,
+    "current_institution_ids": [
+     "I116953780",
+     "I3045169105",
+     "I4210135105",
+     "I4210142037",
+     "I47720641",
+     "I50760025"
+    ]
+   },
+   {
+    "openalex_id": "A5016917580",
+    "name": "Liang Jiang",
+    "orcid": "0000-0001-8598-5985",
+    "works_count": 93,
+    "current_institution_ids": []
+   },
+   {
+    "openalex_id": "A5037143491",
+    "name": "Zhi Liang Jiang",
+    "orcid": "0000-0003-0964-6791",
+    "works_count": 319,
+    "current_institution_ids": [
+     "I139660479",
+     "I183067930"
+    ]
+   },
+   {
+    "openalex_id": "A5076163638",
+    "name": "Liang Jiang",
+    "orcid": "0000-0002-7792-6069",
+    "works_count": 132,
+    "current_institution_ids": [
+     "I108688024",
+     "I40347166",
+     "I4210136859"
+    ]
+   },
+   {
+    "openalex_id": "A5100692009",
+    "name": "Hong Liang",
+    "orcid": "0000-0001-6131-7181",
+    "works_count": 710,
+    "current_institution_ids": [
+     "I157773358",
+     "I29739308",
+     "I4391012567",
+     "I4405270581"
+    ]
+   },
+   {
+    "openalex_id": "A5076919764",
+    "name": "Liang Jiang",
+    "orcid": "0000-0002-0566-9032",
+    "works_count": 26,
+    "current_institution_ids": [
+     "I40347166"
+    ]
+   },
+   {
+    "openalex_id": "A5088052728",
+    "name": "Lu Jiang",
+    "orcid": "0000-0003-1305-1926",
+    "works_count": 125,
+    "current_institution_ids": [
+     "I100930933",
+     "I103163165",
+     "I109935558",
+     "I119273862",
+     "I119454577",
+     "I121296143",
+     "I126520041",
+     "I139660479",
+     "I140172145",
+     "I143593769",
+     "I151727225",
+     "I162868743",
+     "I165075387",
+     "I169351748",
+     "I169572211",
+     "I183067930",
+     "I19820366",
+     "I200769079",
+     "I204983213",
+     "I20942203",
+     "I2250653659",
+     "I24185976",
+     "I25355098",
+     "I2800091995",
+     "I3133055985",
+     "I32574673",
+     "I40347166",
+     "I4210089761",
+     "I4210097066",
+     "I4210098034",
+     "I4210103115",
+     "I4210105834",
+     "I4210108259",
+     "I4210108461",
+     "I4210111959",
+     "I4210112540",
+     "I4210116048",
+     "I4210123885",
+     "I4210125143",
+     "I4210133270",
+     "I4210134482",
+     "I4210140493",
+     "I4210144289",
+     "I4210152908",
+     "I4210155088",
+     "I4210156404",
+     "I4210156904",
+     "I4210158139",
+     "I4210159865",
+     "I4210160793",
+     "I4210165038",
+     "I4210165339",
+     "I4387155266",
+     "I4391767639",
+     "I4391767780",
+     "I4391767836",
+     "I4391767971",
+     "I4391768004",
+     "I4391768043",
+     "I4391768254",
+     "I4400573172",
+     "I4405261251",
+     "I4405261497",
+     "I4405272155",
+     "I4405277351",
+     "I57206974",
+     "I5740404",
+     "I63371133",
+     "I66867065",
+     "I74525822",
+     "I75430998",
+     "I76214153",
+     "I76835614",
+     "I79272384",
+     "I881766915",
+     "I889458895",
+     "I99065089"
+    ]
+   },
+   {
+    "openalex_id": "A5083816120",
+    "name": "Liang Jiang",
+    "orcid": null,
+    "works_count": 14,
+    "current_institution_ids": [
+     "I134738993",
+     "I40347166"
+    ]
+   },
+   {
+    "openalex_id": "A5121376193",
+    "name": "Liang Jiang",
+    "orcid": "0000-0002-0000-9342",
+    "works_count": 1,
+    "current_institution_ids": [
+     "I40347166"
+    ]
+   },
+   {
+    "openalex_id": "A5126886091",
+    "name": "Liang Jiang",
+    "orcid": "0000-0002-0000-9342",
+    "works_count": 8,
+    "current_institution_ids": [
+     "I40347166"
+    ]
+   },
+   {
+    "openalex_id": "A5133266491",
+    "name": "Liang Jiang",
+    "orcid": null,
+    "works_count": 1,
+    "current_institution_ids": [
+     "I40347166"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "Mark M. Wilde",
+  "name": "Mark M. Wilde",
+  "institution_id": "I205783295",
+  "university": "Cornell University",
+  "expected": "A5037632925",
+  "reviewed": false,
+  "candidates": [
+   {
+    "openalex_id": "A5037632925",
+    "name": "Mark M. Wilde",
+    "orcid": "0000-0002-3916-4462",
+    "works_count": 536,
+    "current_institution_ids": [
+     "I151746483",
+     "I183067930",
+     "I205783295",
+     "I4210151696"
+    ]
+   },
+   {
+    "openalex_id": "A5060367215",
+    "name": "K. N. Leung",
+    "orcid": "0009-0008-3585-6585",
+    "works_count": 339,
+    "current_institution_ids": [
+     "I95457486"
+    ]
+   },
+   {
+    "openalex_id": "A5001065587",
+    "name": "Mark C. Wilde",
+    "orcid": null,
+    "works_count": 19,
+    "current_institution_ids": [
+     "I919571938"
+    ]
+   },
+   {
+    "openalex_id": "A5024142322",
+    "name": "M.H. Wilde",
+    "orcid": null,
+    "works_count": 6,
+    "current_institution_ids": [
+     "I52357470"
+    ]
+   },
+   {
+    "openalex_id": "A5073964316",
+    "name": "Mark Wilde",
+    "orcid": "0000-0002-0145-8828",
+    "works_count": 22,
+    "current_institution_ids": [
+     "I180825142",
+     "I4401726869"
+    ]
+   },
+   {
+    "openalex_id": "A5063353088",
+    "name": "M Wilde Mark",
+    "orcid": null,
+    "works_count": 3,
+    "current_institution_ids": []
+   },
+   {
+    "openalex_id": "A5065130969",
+    "name": "M. De Wilde",
+    "orcid": null,
+    "works_count": 2,
+    "current_institution_ids": []
+   },
+   {
+    "openalex_id": "A5125351212",
+    "name": "Mark M. Wilde",
+    "orcid": null,
+    "works_count": 4,
+    "current_institution_ids": [
+     "I205783295"
+    ]
+   },
+   {
+    "openalex_id": "A5083794573",
+    "name": "Mark Brandon",
+    "orcid": null,
+    "works_count": 3,
+    "current_institution_ids": []
+   }
+  ]
+ },
+ {
+  "id": "Mikhail D. Lukin",
+  "name": "Mikhail D. Lukin",
+  "institution_id": "I136199984",
+  "university": "Harvard University",
+  "expected": "A5066245772",
+  "reviewed": false,
+  "candidates": [
+   {
+    "openalex_id": "A5066245772",
+    "name": "Mikhail D. Lukin",
+    "orcid": "0000-0002-8658-1007",
+    "works_count": 1173,
+    "current_institution_ids": [
+     "I136199984",
+     "I2801851002",
+     "I4210134579",
+     "I63966007"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "Qian Du",
+  "name": "Qian Du",
+  "institution_id": "I99041443",
+  "university": "Mississippi State University",
+  "expected": "A5033017179",
+  "reviewed": false,
+  "candidates": [
+   {
+    "openalex_id": "A5033017179",
+    "name": "Qian Du",
+    "orcid": "0000-0001-8354-7500",
+    "works_count": 883,
+    "current_institution_ids": [
+     "I4405280196",
+     "I59028903",
+     "I99041443"
+    ]
+   },
+   {
+    "openalex_id": "A5101514226",
+    "name": "Qian Du",
+    "orcid": "0000-0002-5228-1508",
+    "works_count": 68,
+    "current_institution_ids": [
+     "I4210151987",
+     "I89652312"
+    ]
+   },
+   {
+    "openalex_id": "A5074432302",
+    "name": "Qian Du",
+    "orcid": "0000-0001-7274-949x",
+    "works_count": 151,
+    "current_institution_ids": [
+     "I204983213"
+    ]
+   },
+   {
+    "openalex_id": "A5062813237",
+    "name": "Qian Du",
+    "orcid": "0000-0001-7438-9838",
+    "works_count": 52,
+    "current_institution_ids": [
+     "I205783295",
+     "I4210151987",
+     "I61057504"
+    ]
+   },
+   {
+    "openalex_id": "A5016811112",
+    "name": "Qian Du",
+    "orcid": "0000-0003-3393-681x",
+    "works_count": 26,
+    "current_institution_ids": [
+     "I124055696",
+     "I136750679",
+     "I2801134892",
+     "I31746571",
+     "I4210148920"
+    ]
+   },
+   {
+    "openalex_id": "A5017066267",
+    "name": "Qian Du",
+    "orcid": "0000-0003-3864-8745",
+    "works_count": 80,
+    "current_institution_ids": [
+     "I124055696",
+     "I136750679",
+     "I159948400",
+     "I2801134892",
+     "I31746571",
+     "I4210148920"
+    ]
+   },
+   {
+    "openalex_id": "A5038699052",
+    "name": "Yannan Li",
+    "orcid": "0000-0002-4407-9027",
+    "works_count": 154,
+    "current_institution_ids": [
+     "I14243506"
+    ]
+   },
+   {
+    "openalex_id": "A5101828170",
+    "name": "Qian Du",
+    "orcid": "0000-0001-8522-7332",
+    "works_count": 62,
+    "current_institution_ids": [
+     "I116953780",
+     "I4210156460"
+    ]
+   },
+   {
+    "openalex_id": "A5103209952",
+    "name": "Qian Du",
+    "orcid": "0000-0002-0154-2210",
+    "works_count": 57,
+    "current_institution_ids": [
+     "I4210121771",
+     "I46529539",
+     "I87445476"
+    ]
+   },
+   {
+    "openalex_id": "A5101514224",
+    "name": "Qian Du",
+    "orcid": "0000-0001-7056-5208",
+    "works_count": 26,
+    "current_institution_ids": [
+     "I182386381",
+     "I4210151987",
+     "I4210154454",
+     "I89652312"
+    ]
+   },
+   {
+    "openalex_id": "A5035403520",
+    "name": "Qian Du",
+    "orcid": "0000-0001-8354-7500",
+    "works_count": 10,
+    "current_institution_ids": [
+     "I99041443"
+    ]
+   },
+   {
+    "openalex_id": "A5063268323",
+    "name": "Qian Du",
+    "orcid": "0000-0001-6991-0844",
+    "works_count": 19,
+    "current_institution_ids": [
+     "I99041443"
+    ]
+   },
+   {
+    "openalex_id": "A5149997158",
+    "name": "Qian Du",
+    "orcid": null,
+    "works_count": 1,
+    "current_institution_ids": [
+     "I99041443"
+    ]
+   },
+   {
+    "openalex_id": "A5152059981",
+    "name": "Qian Du",
+    "orcid": null,
+    "works_count": 1,
+    "current_institution_ids": [
+     "I99041443"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "Quntao Zhuang",
+  "name": "Quntao Zhuang",
+  "institution_id": "I1174212",
+  "university": "University of Southern California",
+  "expected": "A5006106735",
+  "reviewed": false,
+  "candidates": [
+   {
+    "openalex_id": "A5006106735",
+    "name": "Quntao Zhuang",
+    "orcid": "0000-0002-9554-3846",
+    "works_count": 200,
+    "current_institution_ids": [
+     "I1174212"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "Roger Grosse",
+  "name": "Roger Grosse",
+  "institution_id": "I185261750",
+  "university": "University of Toronto",
+  "expected": "A5067036768",
+  "reviewed": false,
+  "candidates": [
+   {
+    "openalex_id": "A5067036768",
+    "name": "Roger Grosse",
+    "orcid": null,
+    "works_count": 117,
+    "current_institution_ids": [
+     "I185261750"
+    ]
+   },
+   {
+    "openalex_id": "A5056801475",
+    "name": "Roger C. Grosse",
+    "orcid": "0009-0000-8657-757x",
+    "works_count": 13,
+    "current_institution_ids": []
+   }
+  ]
+ },
+ {
+  "id": "S. Das Sarma",
+  "name": "S. Das Sarma",
+  "institution_id": "I66946132",
+  "university": "University of Maryland, College Park",
+  "expected": "A5060980314",
+  "reviewed": false,
+  "candidates": [
+   {
+    "openalex_id": "A5060980314",
+    "name": "S. Das Sarma",
+    "orcid": "0000-0002-0439-986x",
+    "works_count": 1493,
+    "current_institution_ids": [
+     "I4210151733",
+     "I66946132"
+    ]
+   },
+   {
+    "openalex_id": "A5026657416",
+    "name": "Shiladitya DasSarma",
+    "orcid": "0000-0003-4162-2810",
+    "works_count": 266,
+    "current_institution_ids": [
+     "I126744593",
+     "I4405261322"
+    ]
+   },
+   {
+    "openalex_id": "A5003255062",
+    "name": "S. Das Sarma",
+    "orcid": null,
+    "works_count": 3,
+    "current_institution_ids": []
+   },
+   {
+    "openalex_id": "A5015968620",
+    "name": "S Das Sarma",
+    "orcid": null,
+    "works_count": 4,
+    "current_institution_ids": []
+   },
+   {
+    "openalex_id": "A5110493462",
+    "name": "S. Das Sarma",
+    "orcid": null,
+    "works_count": 1,
+    "current_institution_ids": [
+     "I22716965"
+    ]
+   },
+   {
+    "openalex_id": "A5098269262",
+    "name": "V. M. Tangde I. B. Das Sarma and S. G. Rawat V. M. Tangde I. B. Das Sarma and S. G. Rawat",
+    "orcid": null,
+    "works_count": 1,
+    "current_institution_ids": []
+   }
+  ]
+ },
+ {
+  "id": "Sarang Gopalakrishnan",
+  "name": "Sarang Gopalakrishnan",
+  "institution_id": "I20089843",
+  "university": "Princeton University",
+  "expected": "A5056107519",
+  "reviewed": false,
+  "candidates": [
+   {
+    "openalex_id": "A5056107519",
+    "name": "Sarang Gopalakrishnan",
+    "orcid": "0000-0002-7493-7600",
+    "works_count": 278,
+    "current_institution_ids": [
+     "I20089843",
+     "I4210142324"
+    ]
+   },
+   {
+    "openalex_id": "A5014432085",
+    "name": "Santhosh Gopalakrishnan",
+    "orcid": "0000-0002-0710-5230",
+    "works_count": 46,
+    "current_institution_ids": [
+     "I20089843",
+     "I71374576"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "Sophia E. Economou",
+  "name": "Sophia E. Economou",
+  "institution_id": "I859038795",
+  "university": "Virginia Tech",
+  "expected": "A5060673700",
+  "reviewed": false,
+  "candidates": [
+   {
+    "openalex_id": "A5060673700",
+    "name": "Sophia E. Economou",
+    "orcid": "0000-0002-1939-5589",
+    "works_count": 275,
+    "current_institution_ids": [
+     "I859038795"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "Subir Sachdev A",
+  "name": "Subir Sachdev A",
+  "institution_id": "I136199984",
+  "university": "Harvard University",
+  "expected": "A5041649350",
+  "reviewed": false,
+  "candidates": [
+   {
+    "openalex_id": "A5041649350",
+    "name": "Subir Sachdev A",
+    "orcid": "0000-0002-2432-7070",
+    "works_count": 1066,
+    "current_institution_ids": [
+     "I12323705",
+     "I136199984",
+     "I4210153546",
+     "I4387153999"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "Swaroop Ghosh",
+  "name": "Swaroop Ghosh",
+  "institution_id": "I130769515",
+  "university": "Pennsylvania State University",
+  "expected": "A5085567454",
+  "reviewed": false,
+  "candidates": [
+   {
+    "openalex_id": "A5085567454",
+    "name": "Swaroop Ghosh",
+    "orcid": "0000-0001-8753-490x",
+    "works_count": 310,
+    "current_institution_ids": [
+     "I130769515"
+    ]
+   },
+   {
+    "openalex_id": "A5082093509",
+    "name": "S. K. Ghosh",
+    "orcid": "0000-0002-4711-9733",
+    "works_count": 67,
+    "current_institution_ids": [
+     "I100887729",
+     "I106165777",
+     "I114112103",
+     "I11947397",
+     "I11957088",
+     "I1282311441",
+     "I130238516",
+     "I130769515",
+     "I1341412227",
+     "I135310074",
+     "I145894827",
+     "I152754861",
+     "I154851008",
+     "I155837530",
+     "I16292982",
+     "I165932596",
+     "I170979836",
+     "I202391551",
+     "I2948394018",
+     "I343503978",
+     "I4210100529",
+     "I4210116052",
+     "I4210121466",
+     "I4210122644",
+     "I4210127646",
+     "I4210127875",
+     "I4210139030",
+     "I43439940",
+     "I66946132",
+     "I91203450",
+     "I94234084"
+    ]
+   },
+   {
+    "openalex_id": "A5047382091",
+    "name": "Swaroop Atnoorkar",
+    "orcid": "0000-0002-3262-9845",
+    "works_count": 17,
+    "current_institution_ids": [
+     "I1297288678"
+    ]
+   },
+   {
+    "openalex_id": "A5121534257",
+    "name": "Swaroop Ghosh",
+    "orcid": "0000-0001-8753-490x",
+    "works_count": 4,
+    "current_institution_ids": [
+     "I130769515"
+    ]
+   },
+   {
+    "openalex_id": "A5134438774",
+    "name": "Swaroop Ghosh",
+    "orcid": null,
+    "works_count": 2,
+    "current_institution_ids": [
+     "I130769515"
+    ]
+   },
+   {
+    "openalex_id": "A5101021290",
+    "name": "Ghosh Swaroop",
+    "orcid": null,
+    "works_count": 8,
+    "current_institution_ids": []
+   }
+  ]
+ },
+ {
+  "id": "Yanzhi Wang",
+  "name": "Yanzhi Wang",
+  "institution_id": "I12912129",
+  "university": "Northeastern University",
+  "expected": "A5100651384",
+  "reviewed": false,
+  "candidates": [
+   {
+    "openalex_id": "A5100651384",
+    "name": "Yanzhi Wang",
+    "orcid": "0000-0002-3024-7990",
+    "works_count": 685,
+    "current_institution_ids": [
+     "I12912129",
+     "I130238516",
+     "I16285277",
+     "I4210109081",
+     "I4210142583"
+    ]
+   },
+   {
+    "openalex_id": "A5100651386",
+    "name": "Yanzhi Wang",
+    "orcid": "0000-0002-8324-7425",
+    "works_count": 77,
+    "current_institution_ids": [
+     "I24185976"
+    ]
+   },
+   {
+    "openalex_id": "A5100651389",
+    "name": "Yanzhi Wang",
+    "orcid": "0000-0003-4767-7230",
+    "works_count": 79,
+    "current_institution_ids": [
+     "I119203015",
+     "I4210140274",
+     "I75955062"
+    ]
+   },
+   {
+    "openalex_id": "A5100651392",
+    "name": "Yanzhi Wang",
+    "orcid": "0009-0009-3924-6466",
+    "works_count": 38,
+    "current_institution_ids": [
+     "I47720641"
+    ]
+   },
+   {
+    "openalex_id": "A5100651385",
+    "name": "Yanzhi A. Wang",
+    "orcid": "0000-0001-8205-013x",
+    "works_count": 82,
+    "current_institution_ids": [
+     "I16733864",
+     "I4210090625",
+     "I4210138078"
+    ]
+   },
+   {
+    "openalex_id": "A5100651391",
+    "name": "Yanzhi Wang",
+    "orcid": "0009-0008-4749-5860",
+    "works_count": 57,
+    "current_institution_ids": [
+     "I31746571",
+     "I4210140274"
+    ]
+   },
+   {
+    "openalex_id": "A5102836357",
+    "name": "Yangping Wang",
+    "orcid": "0000-0002-6226-0460",
+    "works_count": 152,
+    "current_institution_ids": [
+     "I119203015",
+     "I139660479",
+     "I152033890",
+     "I16295237",
+     "I176134282",
+     "I18452120",
+     "I4210114785",
+     "I4210124531",
+     "I4210143187",
+     "I4210147228",
+     "I4210163492",
+     "I4800084",
+     "I51185872",
+     "I76214153",
+     "I78988378",
+     "I85430964",
+     "I91935597"
+    ]
+   },
+   {
+    "openalex_id": "A5101544286",
+    "name": "Yanzhi Wang",
+    "orcid": "0000-0003-2395-5048",
+    "works_count": 44,
+    "current_institution_ids": [
+     "I154099455",
+     "I180726961",
+     "I4210103346",
+     "I4210145292",
+     "I58200834"
+    ]
+   },
+   {
+    "openalex_id": "A5100651390",
+    "name": "Yanzhi Wang",
+    "orcid": "0009-0000-0231-0609",
+    "works_count": 33,
+    "current_institution_ids": [
+     "I24943067",
+     "I4472751"
+    ]
+   },
+   {
+    "openalex_id": "A5058104332",
+    "name": "Yanzhi Wang",
+    "orcid": null,
+    "works_count": 10,
+    "current_institution_ids": [
+     "I19820366",
+     "I4210110024"
+    ]
+   },
+   {
+    "openalex_id": "A5088386204",
+    "name": "Yanzhi Wang",
+    "orcid": "0009-0001-5599-9857",
+    "works_count": 8,
+    "current_institution_ids": [
+     "I12912129",
+     "I20231570",
+     "I4392738113"
+    ]
+   },
+   {
+    "openalex_id": "A5158701077",
+    "name": "Yanzhi Wang",
+    "orcid": null,
+    "works_count": 1,
+    "current_institution_ids": [
+     "I12912129"
+    ]
+   },
+   {
+    "openalex_id": "A5159265005",
+    "name": "Yanzhi Wang",
+    "orcid": null,
+    "works_count": 1,
+    "current_institution_ids": [
+     "I12912129"
+    ]
+   }
+  ]
+ }
+]

@@ -32,13 +32,16 @@ class DraftOut(BaseModel):
     cited_publication_ids: list[str]
     warnings: list[str]
     model: str
+    prompt_version: str
+    sources: dict  # what the draft was built from (IDs only; the full context text is in the database)
     created_at: datetime
 
 
 def _out(d: Draft) -> DraftOut:
     return DraftOut(id=str(d.id), opportunity_id=str(d.opportunity_id), kind=d.kind, subject=d.subject, body=d.body,
                     cited_publication_ids=d.cited_publication_ids, warnings=d.warnings, model=d.model,
-                    created_at=d.created_at)
+                    prompt_version=d.prompt_version,
+                    sources={k: v for k, v in (d.context_json or {}).items() if k != "context"}, created_at=d.created_at)
 
 
 @router.post("/opportunities/{opportunity_id}/drafts", response_model=DraftOut, status_code=201)
