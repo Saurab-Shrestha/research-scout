@@ -244,7 +244,7 @@ class Draft(Entity, Base):
     __tablename__ = "drafts"
 
     opportunity_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("opportunities.id"), index=True)
-    kind: Mapped[str]  # email | sop_outline
+    kind: Mapped[str]  # email | follow_up | sop_outline
     subject: Mapped[str | None]
     body: Mapped[str] = mapped_column(Text)
     cited_publication_ids: Mapped[list] = mapped_column(default=list)

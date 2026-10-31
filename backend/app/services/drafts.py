@@ -2,12 +2,13 @@
 
 import json
 import uuid
+from datetime import date
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.db.models import (CandidateProfile, Department, Draft, FundingAssessment, MatchResult, Opportunity, Professor,
+from app.db.models import (Application, CandidateProfile, Department, Draft, FundingAssessment, MatchResult, Opportunity, Professor,
                            ProfessorPublication, Program, Publication, University)
 from app.prompts import drafts as prompt
 from app.schemas.drafts import EmailDraft, SopOutline
@@ -15,6 +16,11 @@ from app.services import llm
 
 MAX_PAPERS = 5
 MAX_EMAIL_WORDS = 180
+MAX_FOLLOW_UP_WORDS = 100
+
+
+class DraftError(ValueError):
+    """The draft can't be written from what is stored yet; the message says what to do first."""
 
 
 def _papers(db: Session, opportunity: Opportunity) -> list[Publication]:
@@ -71,17 +77,47 @@ def _sop_markdown(outline: SopOutline) -> str:
     return "\n\n".join(f"## {s.heading}\n" + "\n".join(f"- {p}" for p in s.points) for s in outline.sections)
 
 
-def generate_draft(db: Session, opportunity: Opportunity, profile: CandidateProfile, kind: str) -> Draft:
+def _follow_up_context(db: Session, opportunity: Opportunity, today: date) -> tuple[str, Draft, list[str]]:
+    """The first email (latest saved version) and when it went out; a follow-up only makes sense after both."""
+    first = db.scalars(select(Draft).where(Draft.opportunity_id == opportunity.id, Draft.kind == "email")
+                       .order_by(Draft.created_at.desc())).first()
+    if first is None:
+        raise DraftError("Write the first email before a follow-up.")
+    app = db.scalars(select(Application).where(Application.opportunity_id == opportunity.id)).first()
+    sent = app.contacted_at if app else None
+    warnings = []
+    if sent is None:
+        warnings.append("This professor isn't marked as contacted. Mark the first email as sent before following up.")
+    elif (today - sent).days < 7:
+        warnings.append(f"Only {(today - sent).days} days since your first email; most replies take one to two weeks.")
+    section = {"subject": first.subject, "body": first.body, "sent_on": sent.isoformat() if sent else None,
+               "days_without_reply": (today - sent).days if sent else None}
+    return f"FIRST_EMAIL:\n{json.dumps(section, ensure_ascii=False)}", first, warnings
+
+
+def generate_draft(db: Session, opportunity: Opportunity, profile: CandidateProfile, kind: str,
+                   today: date | None = None) -> Draft:
     context, papers, trace = build_context(db, opportunity, profile)
+    warnings: list[str] = []
     if kind == "email":
         result = llm.generate_structured(prompt.EMAIL_SYSTEM, context, EmailDraft, settings.extraction_model)
         subject, body = result.parsed.subject, result.parsed.body
+    elif kind == "follow_up":
+        extra, first, warnings = _follow_up_context(db, opportunity, today or date.today())
+        context += "\n\n" + extra
+        trace = {**trace, "first_email_id": str(first.id), "context": context}
+        result = llm.generate_structured(prompt.FOLLOW_UP_SYSTEM, context, EmailDraft, settings.extraction_model)
+        # Same thread: the subject is the first email's, never the model's.
+        subject = first.subject if (first.subject or "").lower().startswith("re:") else f"Re: {first.subject or ''}".strip()
+        body = result.parsed.body
     else:
         result = llm.generate_structured(prompt.SOP_SYSTEM, context, SopOutline, settings.extraction_model)
         subject, body = None, _sop_markdown(result.parsed)
-    ids, warnings = _check_citations(result.parsed.cited_papers, papers)
-    if kind == "email" and len(body.split()) > MAX_EMAIL_WORDS + 20:
-        warnings.append(f"Body is {len(body.split())} words; aim for under {MAX_EMAIL_WORDS}.")
+    ids, citation_warnings = _check_citations(result.parsed.cited_papers, papers)
+    warnings += citation_warnings
+    limit = {"email": MAX_EMAIL_WORDS, "follow_up": MAX_FOLLOW_UP_WORDS}.get(kind)
+    if limit and len(body.split()) > limit + 20:
+        warnings.append(f"Body is {len(body.split())} words; aim for under {limit}.")
     if "[" in body:
         warnings.append("Fill in the bracketed placeholders before sending.")
     if not papers:

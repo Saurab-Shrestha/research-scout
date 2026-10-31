@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { BookOpen, Check, Copy, FileText, Loader2, Mail, PenLine, Quote, Search, Send, Sparkles, TriangleAlert } from 'lucide-react'
+import { BookOpen, Check, Copy, FileText, Loader2, Mail, MailPlus, PenLine, Quote, Search, Send, Sparkles, TriangleAlert } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -54,6 +54,13 @@ function Picker({ selected, onSelect }: { selected: string | null; onSelect: (id
   )
 }
 
+const KIND = {
+  email: { label: 'Email', done: 'Email drafted', empty: 'No email yet', action: 'Draft email', words: 180, icon: Mail },
+  follow_up: { label: 'Follow-up', done: 'Follow-up drafted', empty: 'No follow-up yet', action: 'Draft follow-up', words: 100, icon: MailPlus },
+  sop_outline: { label: 'SOP outline', done: 'SOP outline drafted', empty: 'No SOP outline yet', action: 'Draft SOP outline', words: 0, icon: FileText },
+} as const
+const isEmail = (k: Draft['kind']) => k !== 'sop_outline'
+
 function Editor({ opp, kind }: { opp: Opportunity; kind: Draft['kind'] }) {
   const qc = useQueryClient()
   const drafts = useQuery({ queryKey: ['drafts', opp.id], queryFn: () => api.drafts(opp.id) })
@@ -65,15 +72,15 @@ function Editor({ opp, kind }: { opp: Opportunity; kind: Draft['kind'] }) {
   const [body, setBody] = useState('')
   const [copied, setCopied] = useState(false)
   useEffect(() => { setSubject(current?.subject ?? ''); setBody(current?.body ?? '') }, [current?.id]) // eslint-disable-line react-hooks/exhaustive-deps
-  const dirty = !!current && (body !== current.body || (kind === 'email' && subject !== (current.subject ?? '')))
+  const dirty = !!current && (body !== current.body || (isEmail(kind) && subject !== (current.subject ?? '')))
 
   const generate = useMutation({
     mutationFn: () => api.createDraft(opp.id, kind),
-    onSuccess: (d) => { qc.invalidateQueries({ queryKey: ['drafts', opp.id] }); setVersionId(d.id); toast.success(kind === 'email' ? 'Email drafted' : 'SOP outline drafted') },
+    onSuccess: (d) => { qc.invalidateQueries({ queryKey: ['drafts', opp.id] }); setVersionId(d.id); toast.success(KIND[kind].done) },
     onError: (e) => toast.error('Couldn’t write a draft', { description: e.message }),
   })
   const save = useMutation({
-    mutationFn: () => api.updateDraft(current!.id, kind === 'email' ? { subject, body } : { body }),
+    mutationFn: () => api.updateDraft(current!.id, isEmail(kind) ? { subject, body } : { body }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['drafts', opp.id] }); toast.success('Saved') },
     onError: (e) => toast.error('Couldn’t save', { description: e.message }),
   })
@@ -84,22 +91,35 @@ function Editor({ opp, kind }: { opp: Opportunity; kind: Draft['kind'] }) {
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['applications'] }); toast.success('Marked as contacted', { description: 'Follow-up reminder set for 10 days.' }) },
   })
+  // After a follow-up, the next step is a decision, not another nudge.
+  const markFollowedUp = useMutation({
+    mutationFn: (id: string) => {
+      const due = new Date(Date.now() + 14 * 86_400_000).toISOString().slice(0, 10)
+      return api.updateApplication(id, { next_action: 'No reply after the follow-up? Focus on other professors', next_action_at: due })
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['applications'] }); toast.success('Follow-up recorded', { description: 'Reminder set for two weeks.' }) },
+  })
   const app = apps.data?.find((a) => a.opportunity_id === opp.id)
   const canMarkSent = !app || app.status === 'shortlisted' || app.status === 'researching'
   const leave = (fn: () => void) => { if (!dirty || confirm('Discard your unsaved edits to this draft?')) fn() }
   const words = body.trim() ? body.trim().split(/\s+/).length : 0
   const copy = async () => {
-    await navigator.clipboard.writeText(kind === 'email' ? `Subject: ${subject}\n\n${body}` : body)
+    await navigator.clipboard.writeText(isEmail(kind) ? `Subject: ${subject}\n\n${body}` : body)
     setCopied(true); setTimeout(() => setCopied(false), 1500)
   }
   const mailto = `mailto:${app?.professor_email ?? ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
 
   if (drafts.isLoading) return <RowsSkeleton rows={6} />
+  const hasFirstEmail = (drafts.data ?? []).some((d) => d.kind === 'email')
   if (!current) {
+    const blocked = kind === 'follow_up' && !hasFirstEmail
     return (
-      <EmptyState icon={kind === 'email' ? Mail : FileText} title={kind === 'email' ? 'No email yet' : 'No SOP outline yet'}
-        action={<Button onClick={() => generate.mutate()} disabled={generate.isPending}>{generate.isPending ? <Loader2 className="animate-spin" /> : <Sparkles />}{generate.isPending ? 'Writing… (about 10 s)' : kind === 'email' ? 'Draft email' : 'Draft SOP outline'}</Button>}>
-        Written from your profile, {opp.professor}’s stored papers and the verified program facts. Nothing is sent.
+      <EmptyState icon={KIND[kind].icon} title={KIND[kind].empty}
+        action={<Button onClick={() => generate.mutate()} disabled={generate.isPending || blocked}>{generate.isPending ? <Loader2 className="animate-spin" /> : <Sparkles />}{generate.isPending ? 'Writing… (about 10 s)' : KIND[kind].action}</Button>}>
+        {kind === 'follow_up'
+          ? blocked ? 'Write and send the first email, then come back here if there’s no reply after 10 days.'
+            : `A short reply in the same thread as your first email to ${opp.professor}, adding one new point instead of repeating it. Nothing is sent.`
+          : `Written from your profile, ${opp.professor}’s stored papers and the verified program facts. Nothing is sent.`}
       </EmptyState>
     )
   }
@@ -122,12 +142,12 @@ function Editor({ opp, kind }: { opp: Opportunity; kind: Draft['kind'] }) {
       {current.warnings.length > 0 && (
         <ul className="space-y-1.5" aria-label="Warnings">
           {current.warnings.map((w) => (
-            <li key={w} className="flex gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm"><TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />{w}</li>
+            <li key={w} className="flex gap-2 rounded-lg border border-warning/30 bg-warning-soft px-3 py-2 text-sm"><TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />{w}</li>
           ))}
         </ul>
       )}
 
-      {kind === 'email' && (
+      {isEmail(kind) && (
         <div className="space-y-1.5">
           <Label htmlFor="subject">Subject</Label>
           <Input id="subject" value={subject} onChange={(e) => setSubject(e.target.value)} />
@@ -135,9 +155,9 @@ function Editor({ opp, kind }: { opp: Opportunity; kind: Draft['kind'] }) {
       )}
       <div className="space-y-1.5">
         <div className="flex items-baseline justify-between">
-          <Label htmlFor="body">{kind === 'email' ? 'Message' : 'Outline (Markdown)'}</Label>
-          <span className={cn('text-xs tabular', kind === 'email' && words > 200 ? 'font-medium text-warning-foreground dark:text-warning' : 'text-muted-foreground')}>
-            {words} words{kind === 'email' && ' · aim for under 180'}
+          <Label htmlFor="body">{isEmail(kind) ? 'Message' : 'Outline (Markdown)'}</Label>
+          <span className={cn('text-xs tabular', KIND[kind].words && words > KIND[kind].words + 20 ? 'font-medium text-warning' : 'text-muted-foreground')}>
+            {words} words{KIND[kind].words ? ` · aim for under ${KIND[kind].words}` : ''}
           </span>
         </div>
         <Textarea id="body" value={body} onChange={(e) => setBody(e.target.value)} className={cn('min-h-80 leading-relaxed', kind === 'sop_outline' && 'font-mono text-[13px]')} />
@@ -146,6 +166,10 @@ function Editor({ opp, kind }: { opp: Opportunity; kind: Draft['kind'] }) {
       <div className="flex flex-wrap items-center gap-2">
         <Button onClick={() => save.mutate()} disabled={!dirty || save.isPending}>{save.isPending ? 'Saving…' : dirty ? 'Save changes' : 'Saved'}</Button>
         <Button variant="outline" onClick={copy}>{copied ? <Check /> : <Copy />}{copied ? 'Copied' : 'Copy'}</Button>
+        {kind === 'follow_up' && <Button variant="outline" asChild><a href={mailto}><Send aria-hidden />Open in mail app</a></Button>}
+        {kind === 'follow_up' && app?.status === 'contacted' && (
+          <Button variant="ghost" onClick={() => markFollowedUp.mutate(app.id)} disabled={markFollowedUp.isPending}><Check aria-hidden />I sent it</Button>
+        )}
         {kind === 'email' && (
           <>
             <Button variant="outline" asChild><a href={mailto}><Send aria-hidden />Open in mail app</a></Button>
@@ -218,7 +242,7 @@ function Context({ opp, cited }: { opp: Opportunity; cited: Set<string> }) {
 export function DraftsPage() {
   const [params, setParams] = useSearchParams()
   const selected = params.get('for')
-  const kind = (params.get('kind') as Draft['kind']) ?? 'email'
+  const kind: Draft['kind'] = (params.get('kind') ?? '') in KIND ? params.get('kind') as Draft['kind'] : 'email'
   const opps = useQuery({ queryKey: ['opportunities'], queryFn: () => api.opportunities(true) })
   const drafts = useQuery({ queryKey: ['drafts', selected], queryFn: () => api.drafts(selected!), enabled: !!selected })
   const opp = opps.data?.find((o) => o.id === selected)
@@ -227,7 +251,7 @@ export function DraftsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Writing Studio" description="Emails to professors and statement-of-purpose outlines, grounded in their papers and your profile." />
+      <PageHeader title="Writing Studio" description="Emails, follow-ups and statement-of-purpose outlines, grounded in professors’ papers and your profile." />
       {opps.isError && <ErrorState error={opps.error} retry={() => opps.refetch()} />}
       <div className="grid gap-6 lg:grid-cols-[16rem_1fr] xl:grid-cols-[16rem_1fr_20rem]">
         <aside aria-label="Choose an opportunity"><Picker selected={selected} onSelect={(id) => setParam('for', id)} /></aside>
@@ -242,7 +266,7 @@ export function DraftsPage() {
                   <p className="text-sm text-muted-foreground">{opp.university} · {DEGREE[opp.degree_type]}</p>
                 </div>
                 <Tabs value={kind} onValueChange={(v) => setParam('kind', v)}>
-                  <TabsList><TabsTrigger value="email"><Mail aria-hidden />Email</TabsTrigger><TabsTrigger value="sop_outline"><FileText aria-hidden />SOP outline</TabsTrigger></TabsList>
+                  <TabsList>{(Object.keys(KIND) as Draft['kind'][]).map((k) => { const Icon = KIND[k].icon; return <TabsTrigger key={k} value={k}><Icon aria-hidden />{KIND[k].label}</TabsTrigger> })}</TabsList>
                 </Tabs>
               </div>
               <Editor key={`${opp.id}-${kind}`} opp={opp} kind={kind} />

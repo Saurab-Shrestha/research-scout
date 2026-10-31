@@ -1,4 +1,4 @@
-VERSION = "drafts-v2"
+VERSION = "drafts-v3"
 
 _SHARED = """\
 Facts about the candidate come only from CANDIDATE. Facts about the professor, lab and program come
@@ -28,4 +28,16 @@ Outline a statement of purpose for this specific program, as 4 to 6 sections wit
 points each: motivation from concrete experience, relevant work and results, research interests,
 why this program and professor (using PAPERS and PROGRAM), goals after the degree. Bullets are notes
 for the candidate to expand, not finished prose.
+"""
+
+FOLLOW_UP_SYSTEM = _SHARED + """
+Write a short follow-up to FIRST_EMAIL, which the candidate sent and has had no reply to. At most 100
+words in the body. It is sent in the same thread, so do not repeat the candidate's background.
+- One sentence saying the candidate is following up on their earlier email about the degree and term.
+- Optionally one sentence adding something new and concrete: a different paper from PAPERS than
+  FIRST_EMAIL cites, connected to work in CANDIDATE. Never repeat the first email's points.
+- Repeat the single question from FIRST_EMAIL in one line.
+- Polite and brief. No apology for writing, no guilt ("I know you are busy"), no pressure, no deadline
+  for their reply. Sign with the candidate's name only.
+- The subject field is ignored; return the first email's subject.
 """

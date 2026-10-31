@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ArrowRight, CalendarDays, ChevronRight, Clock, FilePenLine, MapPin, Microscope, Search, ShieldCheck, Star, Telescope, UserRound, Zap, type LucideIcon } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { CalendarExportButton } from '@/components/app/calendar-export'
 import { useOpportunityParam } from '@/components/app/opportunity-sheet'
 import { Meter, Pill } from '@/components/app/pills'
 import { EmptyState, ErrorState, RowsSkeleton } from '@/components/app/states'
@@ -140,7 +141,10 @@ function NextSteps({ steps }: { steps: Step[] }) {
 function Deadlines({ items, onOpen }: { items: Opportunity[]; onOpen: (id: string) => void }) {
   return (
     <section aria-labelledby="deadlines" className="sheet p-5">
-      <h2 id="deadlines" className="flex items-center gap-2 text-xl"><Clock aria-hidden className="size-5 text-signal" />Upcoming deadlines</h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 id="deadlines" className="flex items-center gap-2 text-xl"><Clock aria-hidden className="size-5 text-signal" />Upcoming deadlines</h2>
+        <CalendarExportButton />
+      </div>
       {items.length === 0 ? (
         <p className="mt-3 text-sm text-muted-foreground">No program on your list publishes a deadline yet. Many post them in the autumn.</p>
       ) : (

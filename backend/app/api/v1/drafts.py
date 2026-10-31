@@ -15,7 +15,7 @@ router = APIRouter(tags=["drafts"])
 
 
 class DraftCreate(BaseModel):
-    kind: Literal["email", "sop_outline"]
+    kind: Literal["email", "follow_up", "sop_outline"]
 
 
 class DraftUpdate(BaseModel):
@@ -53,6 +53,8 @@ def create_draft(opportunity_id: uuid.UUID, body: DraftCreate, db: Session = Dep
         raise HTTPException(404, "Opportunity or profile not found")
     try:
         return _out(drafts.generate_draft(db, opportunity, profile, body.kind))
+    except drafts.DraftError as e:
+        raise HTTPException(422, str(e))
     except llm.LLMError as e:
         raise HTTPException(502, str(e))
 

@@ -66,7 +66,7 @@ export interface Application {
 export interface Draft {
   id: string
   opportunity_id: string
-  kind: 'email' | 'sop_outline'
+  kind: 'email' | 'follow_up' | 'sop_outline'
   subject: string | null
   body: string
   cited_publication_ids: string[]

@@ -59,3 +59,26 @@ def test_sop_outline_is_rendered_as_markdown(client, monkeypatch):
     monkeypatch.setattr(llm, "generate_structured", lambda *a: llm.LLMResult(outline, "m", 1, 1))
     body = client.post(f"/api/v1/opportunities/{opp_id}/drafts", json={"kind": "sop_outline"}).json()["body"]
     assert body == "## Motivation\n- OCR work\n- RAG systems"
+
+
+def test_follow_up_needs_a_first_email_and_reuses_its_thread(client, monkeypatch):
+    opp_id = scored_opportunity(client, monkeypatch)
+    r = client.post(f"/api/v1/opportunities/{opp_id}/drafts", json={"kind": "follow_up"})
+    assert r.status_code == 422 and "first email" in r.json()["detail"]
+
+    first = EmailDraft(subject="PhD Fall 2027 inquiry", body="Dear Prof. Lovelace, first email.", cited_papers=[])
+    monkeypatch.setattr(llm, "generate_structured", lambda *a: llm.LLMResult(first, "m", 1, 1))
+    client.post(f"/api/v1/opportunities/{opp_id}/drafts", json={"kind": "email"})
+
+    seen = {}
+
+    def fake(system, user, schema, model):
+        seen["user"] = user
+        return llm.LLMResult(EmailDraft(subject="Something else", body="Dear Prof. Lovelace, following up.",
+                                        cited_papers=[]), model, 1, 1)
+    monkeypatch.setattr(llm, "generate_structured", fake)
+    draft = client.post(f"/api/v1/opportunities/{opp_id}/drafts", json={"kind": "follow_up"}).json()
+    assert draft["kind"] == "follow_up" and draft["subject"] == "Re: PhD Fall 2027 inquiry"
+    assert "first email." in seen["user"]  # the model sees what was already sent
+    assert any("isn't marked as contacted" in w for w in draft["warnings"])
+    assert draft["sources"]["first_email_id"]

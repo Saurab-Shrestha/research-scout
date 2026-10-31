@@ -4,6 +4,7 @@ import { Archive, GripVertical, History, KanbanSquare, Mail, MoreHorizontal, Tab
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
+import { CalendarExportButton } from '@/components/app/calendar-export'
 import { useOpportunityParam } from '@/components/app/opportunity-sheet'
 import { DeadlineChip } from '@/components/app/pills'
 import { EmptyState, ErrorState, PageHeader, RowsSkeleton } from '@/components/app/states'
@@ -300,7 +301,8 @@ export function TrackerPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Application Tracker" description="Drag cards between stages, or use a card’s menu. With a keyboard, focus the grip and press space. Each move updates the suggested next step."
-        actions={apps.length > 0 && (
+        actions={apps.length > 0 && (<>
+          <CalendarExportButton size="default" />
           <div role="group" aria-label="View" className="inline-flex rounded-lg border border-border bg-sheet p-0.5">
             {VIEWS.map(([v, label, Icon]) => (
               <button key={v} type="button" aria-pressed={view === v} onClick={() => setView(v)}
@@ -310,7 +312,7 @@ export function TrackerPage() {
               </button>
             ))}
           </div>
-        )} />
+        </>)} />
       {q.isError ? <ErrorState error={q.error} retry={() => q.refetch()} /> : q.isLoading ? <RowsSkeleton rows={4} /> : apps.length === 0 ? (
         <EmptyState icon={KanbanSquare} title="Your pipeline is empty" action={<Button asChild><Link to="/opportunities">Browse opportunities</Link></Button>}>
           Open an opportunity and choose “Add to shortlist” to start.
