@@ -31,5 +31,5 @@ it, for example a reverse proxy with login. Anyone who can reach the app can:
 ## Reporting a vulnerability
 
 Please report security problems privately through
-[GitHub security advisories](https://github.com/Saurab-Shrestha/ProfSearch/security/advisories/new)
+[GitHub security advisories](https://github.com/Saurab-Shrestha/research-scout/security/advisories/new)
 rather than a public issue. Include steps to reproduce. You should get a reply within a week.

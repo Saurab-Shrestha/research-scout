@@ -35,8 +35,8 @@ You need Docker and an API key for one AI provider: Google Gemini, OpenAI or Ant
 server such as Ollama.
 
 ```bash
-git clone https://github.com/Saurab-Shrestha/ProfSearch.git
-cd ProfSearch
+git clone https://github.com/Saurab-Shrestha/research-scout.git
+cd research-scout
 cp .env.example .env        # set POSTGRES_PASSWORD; everything else is optional
 docker compose up --build -d
 ```
