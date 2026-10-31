@@ -54,3 +54,8 @@ def test_tracker_lifecycle(client):
     assert client.patch(f"/api/v1/applications/{app['id']}", json={"status": "bogus"}).status_code == 422
     assert client.delete(f"/api/v1/applications/{app['id']}").status_code == 204
     assert client.get("/api/v1/applications").json() == []
+
+
+def test_outside_the_us_contacts_supervisor_first():
+    action, _ = suggest_next_action("DE", "phd", "shortlisted", None, TODAY)
+    assert "before applying" in action

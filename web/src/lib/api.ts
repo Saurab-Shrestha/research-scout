@@ -151,7 +151,7 @@ export const api = {
   jobs: () => request<Job[]>('GET', '/research-jobs'),
   job: (id: string) => request<Job>('GET', `/research-jobs/${id}`),
   jobEvents: (id: string) => request<JobEvent[]>('GET', `/research-jobs/${id}/events`),
-  startDiscovery: (body: { query?: string | null; research_areas: string[]; countries: ('US' | 'CA')[]; max_results: number; find_pages: boolean }) =>
+  startDiscovery: (body: { query?: string | null; research_areas: string[]; countries: string[]; max_results: number; find_pages: boolean; refresh?: boolean }) =>
     request<Job>('POST', '/research-jobs', body),
   ingest: (body: { url?: string | null; text?: string | null; source_type?: 'web_page' | 'social_post' }) =>
     request<{ source_id: string; canonical_url: string; created: boolean }>('POST', '/sources/ingest', body),

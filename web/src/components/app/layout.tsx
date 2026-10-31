@@ -5,7 +5,7 @@ import { Link, NavLink, Outlet } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { api, CLOSED } from '@/lib/api'
-import { daysUntil } from '@/lib/format'
+import { countryList, daysUntil } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { ThemeToggle } from './theme'
 
@@ -81,13 +81,15 @@ function Nav({ onNavigate }: { onNavigate?: () => void }) {
 /** The intake the whole search is aimed at, read from the profile. */
 function IntakeSummary() {
   const { data } = useQuery({ queryKey: ['profile'], queryFn: api.profile, retry: false })
+  const opps = useQuery({ queryKey: ['opportunities'], queryFn: () => api.opportunities(true) })
+  const where = countryList([...new Set((opps.data ?? []).map((o) => o.country).filter((c): c is string => !!c))])
   if (!data?.intended_start_term) return null
   return (
     <Link to="/profile" className="flex gap-3 rounded-xl bg-well px-4 py-3.5 transition-colors hover:bg-well-2 focus-visible:outline-2 focus-visible:outline-ring">
       <CalendarDays aria-hidden className="mt-0.5 size-[18px] shrink-0 text-navy" />
       <span>
         <span className="block font-semibold text-foreground">{data.intended_start_term}</span>
-        <span className="block text-xs text-muted-foreground">Master’s · PhD<br />USA &amp; Canada</span>
+        <span className="block text-xs text-muted-foreground">Master’s · PhD{where && <><br />{where}</>}</span>
       </span>
     </Link>
   )

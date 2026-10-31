@@ -22,6 +22,7 @@ from app.api.v1 import professors as professors_api
 from app.api.v1 import profile as profile_api
 from app.api.v1 import research_jobs as jobs_api
 from app.core.config import settings
+from app.core.countries import CountryCode
 from app.core.security import UnsafeURLError
 from app.db.models import ResearchJob
 from app.schemas.profile import CandidateProfileIn, Education, Experience, FundingPreferences, TestScore
@@ -177,14 +178,16 @@ def find_faculty_page(professor_id: str) -> dict[str, Any]:
 
 
 @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=True))
-def start_discovery(research_areas: list[str], query: str | None = None, countries: list[Literal["US", "CA"]] = ["US", "CA"],
-                    max_results: int = 30, find_pages: bool = True) -> dict[str, Any]:
+def start_discovery(research_areas: list[str], query: str | None = None, countries: list[CountryCode] = ["US", "CA"],
+                    max_results: int = 30, find_pages: bool = True, refresh: bool = False) -> dict[str, Any]:
     """Queue a background discovery job (a worker must be running). Poll with get_discovery_job.
 
     research_areas: any of machine_learning, artificial_intelligence, quantum_computing, or free text.
+    countries: ISO codes from US, CA, GB, IE, DE, NL, CH, AT, BE, DK, FI, NO, SE, FR, ES, IT, PT, AU, NZ, JP, KR.
+    Researchers already saved are skipped, so max_results counts new ones; refresh=True includes them and re-links their papers.
     """
     body = jobs_api.DiscoveryRequest(research_areas=research_areas, query=query, countries=countries,
-                                     max_results=max_results, find_pages=find_pages)
+                                     max_results=max_results, find_pages=find_pages, refresh=refresh)
     if not body.research_areas and not body.query:
         raise ToolError("provide research_areas or a query")
     with SessionLocal() as db:

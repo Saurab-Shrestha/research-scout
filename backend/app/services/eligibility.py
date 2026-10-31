@@ -4,6 +4,8 @@ import re
 from dataclasses import asdict, dataclass
 from datetime import date
 
+from app.core import countries
+
 ORDER = {"fail": 0, "unknown": 1, "warn": 2, "ok": 3}
 
 
@@ -50,6 +52,18 @@ def check_gpa(profile: dict, requirements: dict) -> Check:
     return Check("gpa", "ok" if ok else "fail", f"Minimum {stated}; yours {bachelors['gpa']}/4.0.")
 
 
+# PhD applicants without a master's, by funding system. Unlisted systems: entry from a bachelor's is normal.
+PHD_ENTRY = {
+    "ca": "Canadian PhDs usually require a master's; consider the thesis MSc route.",
+    "studentship": "UK and Irish PhDs often expect a master's or a first-class bachelor's.",
+    "position": "European PhDs usually require a master's; consider a master's there first.",
+    "contract": "European PhDs usually require a master's; consider a master's there first.",
+    "anz": "Australian and NZ PhDs expect honours or a research master's; check whether your bachelor's counts.",
+    "jp": "Japanese doctoral courses require a master's; apply to the master's course first.",
+    "kr": "Korean PhDs usually require a master's; consider the integrated MS-PhD track.",
+}
+
+
 def check_degree(profile: dict, requirements: dict, country: str | None, degree_type: str) -> Check:
     has_masters = any("master" in (e.get("degree") or "").lower() or (e.get("degree") or "").upper().startswith("M")
                       for e in profile.get("education", []))
@@ -59,19 +73,19 @@ def check_degree(profile: dict, requirements: dict, country: str | None, degree_
         return Check("degree", "fail", "Program requires a master's before the PhD.")
     if requirements.get("requires_masters_for_phd") == "no":
         return Check("degree", "ok", "Direct entry from a bachelor's is stated.")
-    if country == "CA":
-        return Check("degree", "warn", "Canadian PhDs usually require a master's; consider the thesis MSc route.")
+    if note := PHD_ENTRY.get(countries.system(country)):
+        return Check("degree", "warn", note)
     return Check("degree", "ok", "US PhDs usually admit from a bachelor's.")
 
 
-def is_international(profile: dict) -> bool:
-    # ponytail: inferred from education countries; add an explicit citizenship field if this misfires.
-    return not any((e.get("country") or "").upper() in ("US", "CA") for e in profile.get("education", []))
+def is_international(profile: dict, country: str | None) -> bool:
+    # ponytail: inferred from where you studied; add an explicit citizenship field if this misfires.
+    return not any((e.get("country") or "").upper() == country for e in profile.get("education", []))
 
 
-def check_international(profile: dict, requirements: dict) -> Check:
+def check_international(profile: dict, requirements: dict, country: str | None) -> Check:
     accepted = requirements.get("international_applicants_accepted")
-    if not is_international(profile):
+    if not is_international(profile, country):
         return Check("international", "ok", "Domestic applicant.")
     if accepted == "no":
         return Check("international", "fail", "Program does not admit international applicants.")
@@ -90,7 +104,7 @@ def check_deadline(deadline: date | None, today: date) -> Check:
 
 def evaluate(profile: dict, requirements: dict, country: str | None, degree_type: str,
              deadline: date | None, today: date) -> tuple[str, list[dict]]:
-    checks = [check_degree(profile, requirements, country, degree_type), check_international(profile, requirements),
+    checks = [check_degree(profile, requirements, country, degree_type), check_international(profile, requirements, country),
               check_english(profile, requirements),
               check_gpa(profile, requirements), check_deadline(deadline, today)]
     statuses = [c.status for c in checks]

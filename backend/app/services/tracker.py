@@ -14,7 +14,7 @@ def suggest_next_action(country: str | None, degree_type: str, status: str, dead
         return None, None
     apply_by = deadline - timedelta(days=7) if deadline else None
     if status in ("shortlisted", "researching"):
-        if country == "CA" and degree_type in ("thesis_masters", "phd"):
+        if country and country != "US" and degree_type in ("thesis_masters", "phd"):  # outside the US, find a supervisor first
             return "Email the professor about supervision and funding before applying", today + timedelta(days=3)
         if degree_type == "phd":
             return "Optional: email the professor; start the application", min(filter(None, [apply_by, today + timedelta(days=14)]))

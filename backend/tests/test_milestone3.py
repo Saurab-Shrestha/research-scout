@@ -312,3 +312,19 @@ def test_worker_records_llm_usage_and_cost(monkeypatch):
     with SessionLocal() as db:
         job = db.get(ResearchJob, job.id)
         assert job.tokens_used == 1_500_000 and job.cost_usd == 2.03
+
+
+def test_country_systems_drive_defaults_and_phd_entry():
+    from app.services.programs import classify_funding
+    germany = classify_funding("DE", "phd", {}, [], [], False)
+    assert (germany["funding_status"], germany["basis"]) == ("potential", "supervisor")
+    assert classify_funding("DE", "thesis_masters", {}, [], [], False)["funding_status"] == "unfunded"
+    assert classify_funding("XX", "phd", {}, [], [], False)["funding_status"] == "unknown"
+    _, checks = eligibility.evaluate(PROFILE, {}, "JP", "phd", None, TODAY)
+    assert next(c for c in checks if c["name"] == "degree")["status"] == "warn"
+
+
+def test_studying_in_the_program_country_makes_you_domestic():
+    profile = {"education": [{"degree": "BSc", "country": "DE"}], "test_scores": []}
+    assert not eligibility.is_international(profile, "DE")
+    assert eligibility.is_international(profile, "GB")

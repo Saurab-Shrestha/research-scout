@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.countries import CountryCode
 from app.db.models import JobEvent, ResearchJob
 from app.db.session import get_db
 
@@ -16,13 +17,14 @@ router = APIRouter(prefix="/research-jobs", tags=["research-jobs"])
 class DiscoveryRequest(BaseModel):
     job_type: Literal["discovery"] = "discovery"
     query: str | None = None
-    countries: list[Literal["US", "CA"]] = ["US", "CA"]
+    countries: list[CountryCode] = Field(["US", "CA"], min_length=1)
     degree_types: list[Literal["phd", "thesis_masters", "course_masters"]] = ["phd", "thesis_masters"]
     research_areas: list[str] = []
     funding_priority: Literal["full_funding", "any"] = "full_funding"
     seed_urls: list[str] = []
     max_results: int = Field(30, ge=1, le=100)
     find_pages: bool = True  # search for and verify faculty pages (Gemini + Google Search)
+    refresh: bool = False  # also return researchers already saved and refresh their papers; default skips them
 
 
 class JobOut(BaseModel):

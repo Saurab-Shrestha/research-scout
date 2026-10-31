@@ -101,12 +101,37 @@ def test_discovery_job_creates_professors_with_publications(client, fake_openale
     assert events[0] == "started" and events[-1] == "completed"
 
 
-def test_rerunning_discovery_does_not_duplicate(client, fake_openalex):
+def test_rerunning_discovery_skips_saved_researchers(client, fake_openalex):
     graph = build_graph(InMemorySaver())
     run_job(graph, make_job().id)
-    run_job(graph, make_job().id)
+    again = make_job()
+    run_job(graph, again.id)
     assert len(client.get("/api/v1/professors").json()) == 2
-    assert fake_openalex["works"] == 2  # second job skips already-enriched professors
+    assert client.get(f"/api/v1/research-jobs/{again.id}").json()["result"]["professors"] == 0
+    assert fake_openalex["works"] == 2
+
+
+def test_refresh_includes_saved_researchers_and_relinks_papers(client, fake_openalex):
+    graph = build_graph(InMemorySaver())
+    run_job(graph, make_job().id)
+    again = make_job(refresh=True)
+    run_job(graph, again.id)
+    result = client.get(f"/api/v1/research-jobs/{again.id}").json()["result"]
+    assert result["professors"] == 2 and result["new_professors"] == 0
+    assert len(client.get("/api/v1/professors").json()) == 2
+    assert fake_openalex["works"] == 4
+
+
+def test_select_candidates_skips_known_ids_and_split_profiles():
+    authors = [
+        author_raw("A1", "Saved", [{"institution": UOFT, "years": [2025]}]),
+        author_raw("A9", "Roger B. Grosse", [{"institution": UOFT, "years": [2025]}]),  # second OpenAlex ID, same person
+        author_raw("A3", "New", [{"institution": UOFT, "years": [2025]}]),
+    ]
+    known = {"A1", (("roger", "grosse"), "I2")}
+    kept, skipped = discovery.select_candidates(authors, {}, ["US", "CA"], YEAR, 10, known)
+    assert [c.name for c in kept] == ["New"]
+    assert all(s["reason"].startswith("already") for s in skipped)
 
 
 def test_failed_job_resumes_from_checkpoint(client, fake_openalex, monkeypatch):

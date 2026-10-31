@@ -90,7 +90,8 @@ export function ResearchersPage() {
           </Field>
           <Field label="Location">
             <select value={get('country')} onChange={(e) => set('country', e.target.value)} className={selectClass}>
-              <option value="">USA and Canada</option><option value="US">USA</option><option value="CA">Canada</option>
+              <option value="">All countries</option>
+              {[...new Set(all.map((p) => p.country).filter((c): c is string => !!c))].sort().map((c) => <option key={c} value={c}>{COUNTRY[c] ?? c}</option>)}
             </select>
           </Field>
           <Field label="Recruiting signal">

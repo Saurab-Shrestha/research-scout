@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { api, type Degree, type Job } from '@/lib/api'
-import { DEGREE, timeAgo } from '@/lib/format'
+import { countryList, DEGREE, REGIONS, timeAgo } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 // The research pipeline behind the Researchers page: add researchers, evaluate their programs, watch the jobs.
@@ -66,16 +66,48 @@ export function PipelineSteps() {
   )
 }
 
+/** Countries by region; the region checkbox selects or clears all of its countries. */
+function CountryPicker({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  return (
+    <fieldset className="space-y-2">
+      <legend className="text-sm font-medium">Countries <span className="font-normal text-muted-foreground">({value.length} selected)</span></legend>
+      {Object.entries(REGIONS).map(([region, names]) => {
+        const codes = Object.keys(names)
+        const picked = codes.filter((c) => value.includes(c)).length
+        return (
+          <div key={region} className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-4">
+            <label className="flex w-36 shrink-0 items-center gap-2 pt-1 text-sm">
+              <Checkbox checked={picked === codes.length ? true : picked ? 'indeterminate' : false}
+                onCheckedChange={() => onChange(picked === codes.length ? value.filter((c) => !codes.includes(c)) : [...new Set([...value, ...codes])])} />
+              {region}
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {codes.map((c) => (
+                <button key={c} type="button" aria-pressed={value.includes(c)} onClick={() => onChange(toggle(value, c))}
+                  className={cn('rounded-lg border px-2.5 py-1 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-ring',
+                    value.includes(c) ? 'border-navy bg-navy text-navy-ink' : 'border-border bg-sheet text-muted-foreground hover:border-input hover:text-foreground')}>
+                  {names[c]}
+                </button>
+              ))}
+            </div>
+          </div>
+        )
+      })}
+    </fieldset>
+  )
+}
+
 function ByArea() {
   const profile = useQuery({ queryKey: ['profile'], queryFn: api.profile, retry: false })
   const [edited, setAreas] = useState<string[] | null>(null)
   const areas = edited ?? profile.data?.research_interests ?? []  // your profile's interests until you edit them
-  const [countries, setCountries] = useState<('US' | 'CA')[]>(['US', 'CA'])
+  const [countries, setCountries] = useState<string[]>(['US', 'CA'])
   const [max, setMax] = useState(20)
   const [findPages, setFindPages] = useState(true)
+  const [refresh, setRefresh] = useState(false)
   const started = useStarted()
   const discover = useMutation({
-    mutationFn: () => api.startDiscovery({ research_areas: areas, countries, max_results: max, find_pages: findPages }),
+    mutationFn: () => api.startDiscovery({ research_areas: areas, countries, max_results: max, find_pages: findPages, refresh }),
     onSuccess: () => started('Discovery started'),
     onError: (e) => toast.error('Couldn’t start discovery', { description: e.message }),
   })
@@ -86,20 +118,16 @@ function ByArea() {
         <TagInput id="areas" value={areas} onChange={setAreas} placeholder="Add an area and press Enter" />
         <p className="text-xs text-muted-foreground">Searches OpenAlex for researchers actively publishing in these areas, then verifies their faculty pages.</p>
       </div>
+      <CountryPicker value={countries} onChange={setCountries} />
       <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
-        <fieldset className="space-y-1.5">
-          <legend className="text-sm font-medium">Countries</legend>
-          <div className="flex h-9 items-center gap-4">
-            {(['US', 'CA'] as const).map((c) => (
-              <label key={c} className="flex items-center gap-2 text-sm"><Checkbox checked={countries.includes(c)} onCheckedChange={() => setCountries(toggle(countries, c))} />{c === 'US' ? 'USA' : 'Canada'}</label>
-            ))}
-          </div>
-        </fieldset>
         <div className="w-32 space-y-1.5">
           <Label htmlFor="max">Max researchers</Label>
           <Input id="max" type="number" min={1} max={100} value={max} onChange={(e) => setMax(Math.min(100, Math.max(1, Number(e.target.value) || 1)))} />
         </div>
         <label className="flex h-9 items-center gap-2 text-sm"><Checkbox checked={findPages} onCheckedChange={(c) => setFindPages(!!c)} />Verify faculty pages</label>
+        <label className="flex h-9 items-center gap-2 text-sm" title="Off: researchers already in your list are skipped, so the max counts only new ones">
+          <Checkbox checked={refresh} onCheckedChange={(c) => setRefresh(!!c)} />Include ones I already have (refresh their papers)
+        </label>
         <Button type="submit" className="ml-auto" disabled={discover.isPending || areas.length === 0 || countries.length === 0}>
           {discover.isPending ? <Loader2 className="animate-spin" /> : <Compass />}Start discovery
         </Button>
@@ -225,7 +253,7 @@ function JobRow({ job, expanded, onToggle }: { job: Job; expanded: boolean; onTo
   const label = isEval ? 'Evaluate programs' : `Discover: ${((job.input.research_areas as string[] | undefined)?.join(', ') || (job.input.query as string) || 'researchers').replace(/_/g, ' ')}`
   const detail = isEval
     ? `${(job.input.degree_types as string[] | undefined)?.map((d) => DEGREE[d as Degree] ?? d).join(', ') ?? ''}`
-    : `${(job.input.countries as string[] | undefined)?.join(' & ') ?? ''} · up to ${job.input.max_results ?? '?'}`
+    : `${countryList((job.input.countries as string[] | undefined) ?? [])} · up to ${job.input.max_results ?? '?'}`
   const st = STATUS[job.status as keyof typeof STATUS] ?? { label: job.status, tone: 'neutral' as const }
   return (
     <li>

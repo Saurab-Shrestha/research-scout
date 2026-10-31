@@ -9,12 +9,13 @@ from typing import NotRequired, TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
+from app.core.countries import COUNTRIES
 from app.db.models import Professor, ProfessorPublication
 from app.db.session import SessionLocal
 from app.services import discovery, llm, openalex, page_finder, publications
 from app.services.jobs import emit
 
-ALLOWED_COUNTRIES = {"US", "CA"}
+ALLOWED_COUNTRIES = set(COUNTRIES)
 TOPIC_CANDIDATES_PER_QUERY = 5  # the planner picks from these; taking them all drifted into adjacent fields
 ACTIVE_YEARS = 3
 
@@ -26,6 +27,7 @@ class DiscoveryState(TypedDict):
     research_areas: list[str]
     max_results: int
     find_pages: NotRequired[bool]
+    refresh: NotRequired[bool]  # include researchers already saved and re-link their recent papers
     topic_ids: NotRequired[list[str]]
     author_counts: NotRequired[dict[str, int]]
     professor_ids: NotRequired[list[str]]
@@ -59,9 +61,9 @@ def find_topics(state: DiscoveryState) -> dict:
 
 def discover_authors(state: DiscoveryState) -> dict:
     from_year = datetime.now(UTC).year - ACTIVE_YEARS
-    authors = openalex.top_authors_for_topics(
-        state["topic_ids"], state["countries"], from_year, limit=min(200, state["max_results"] * 5),
-    )
+    # Without refresh, saved researchers are skipped later, so fetch the full pool to leave room for new ones.
+    limit = min(200, state["max_results"] * 5) if state.get("refresh") else 200
+    authors = openalex.top_authors_for_topics(state["topic_ids"], state["countries"], from_year, limit=limit)
     emit(state["job_id"], "authors", f"Found {len(authors)} active authors since {from_year}")
     return {"author_counts": {a["id"]: a["topic_works"] for a in authors}}
 
@@ -69,18 +71,20 @@ def discover_authors(state: DiscoveryState) -> dict:
 def persist_candidates(state: DiscoveryState) -> dict:
     counts = state["author_counts"]
     authors = openalex.get_authors(list(counts))
-    kept, skipped = discovery.select_candidates(
-        authors, counts, state["countries"], datetime.now(UTC).year, state["max_results"],
-    )
     ids, new_ids = [], []
     with SessionLocal() as db:
+        known = set() if state.get("refresh") else discovery.known_keys(db)
+        kept, skipped = discovery.select_candidates(
+            authors, counts, state["countries"], datetime.now(UTC).year, state["max_results"], known,
+        )
         for c in kept:
             prof_id, created = discovery.upsert_candidate(db, c)
             ids.append(str(prof_id))
             if created:
                 new_ids.append(str(prof_id))
+    already = sum(s["reason"].startswith("already") for s in skipped)
     emit(state["job_id"], "professors",
-         f"Kept {len(kept)} professors ({len(new_ids)} new), skipped {len(skipped)}")
+         f"Kept {len(kept)} professors ({len(new_ids)} new), skipped {len(skipped)} ({already} already in your list)")
     return {"professor_ids": ids, "new_professor_ids": new_ids, "skipped": skipped}
 
 
@@ -89,7 +93,7 @@ def enrich_publications(state: DiscoveryState) -> dict:
     with SessionLocal() as db:
         for prof_id in state["professor_ids"]:
             has_pubs = db.query(ProfessorPublication).filter_by(professor_id=prof_id).first()
-            if has_pubs:
+            if has_pubs and not state.get("refresh"):
                 continue  # already enriched by an earlier job or an interrupted run of this node
             professor = db.get(Professor, prof_id)
             try:

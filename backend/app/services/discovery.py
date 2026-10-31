@@ -79,17 +79,40 @@ def looks_senior(author: dict) -> bool:
     return author.get("works_count", 0) >= MIN_WORKS and h_index >= MIN_H_INDEX
 
 
+def known_keys(db: Session) -> set:
+    """OpenAlex IDs plus (name, university) pairs of professors already saved.
+
+    The name pair catches OpenAlex split profiles: one person under two author IDs.
+    """
+    rows = db.execute(select(Professor.openalex_id, Professor.name, University.openalex_id)
+                      .outerjoin(University, Professor.university_id == University.id))
+    keys = set()
+    for author_id, name, inst_id in rows:
+        keys.add(author_id)
+        if inst_id:
+            keys.add((publications._name_key(name), inst_id))
+    keys.discard(None)
+    return keys
+
+
 def select_candidates(authors: list[dict], topic_counts: dict[str, int], countries: list[str],
-                      current_year: int, max_results: int) -> tuple[list[Candidate], list[dict]]:
+                      current_year: int, max_results: int, known: set = frozenset()) -> tuple[list[Candidate], list[dict]]:
+    """`known` (from known_keys) skips researchers already saved, so max_results counts only new ones."""
     kept, skipped = [], []
     for a in authors:
         author_id = openalex.short_id(a["id"])
+        if author_id in known:
+            skipped.append({"name": a["display_name"], "reason": "already in your list"})
+            continue
         if not looks_senior(a):
             skipped.append({"name": a["display_name"], "reason": "below seniority threshold"})
             continue
         inst, note = primary_institution(a, countries, current_year)
         if inst is None:
             skipped.append({"name": a["display_name"], "reason": note})
+            continue
+        if (publications._name_key(a["display_name"]), openalex.short_id(inst["id"])) in known:
+            skipped.append({"name": a["display_name"], "reason": "already in your list (another OpenAlex profile)"})
             continue
         kept.append(Candidate(
             author_id=author_id,

@@ -62,7 +62,22 @@ export function urgencyTone(days: number | null): Tone {
   return 'neutral'
 }
 
-export const COUNTRY: Record<string, string> = { US: 'USA', CA: 'Canada' }
+// Mirrors backend/app/core/countries.py: the countries discovery can search, by region.
+export const REGIONS: Record<string, Record<string, string>> = {
+  'North America': { US: 'USA', CA: 'Canada' },
+  Europe: {
+    GB: 'United Kingdom', IE: 'Ireland', DE: 'Germany', NL: 'Netherlands', CH: 'Switzerland', AT: 'Austria', BE: 'Belgium',
+    DK: 'Denmark', FI: 'Finland', NO: 'Norway', SE: 'Sweden', FR: 'France', ES: 'Spain', IT: 'Italy', PT: 'Portugal',
+  },
+  'Asia-Pacific': { AU: 'Australia', NZ: 'New Zealand', JP: 'Japan', KR: 'South Korea' },
+}
+export const COUNTRY: Record<string, string> = Object.assign({}, ...Object.values(REGIONS))
+
+/** "USA & Canada" for a couple of countries, "7 countries" beyond three. */
+export function countryList(codes: string[]): string {
+  const names = codes.map((c) => COUNTRY[c] ?? c)
+  return names.length > 3 ? `${names.length} countries` : names.join(' & ')
+}
 
 export function timeAgo(iso: string): string {
   const s = Math.round((Date.now() - new Date(iso).getTime()) / 1000)

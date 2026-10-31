@@ -72,7 +72,10 @@ export function OpportunitiesPage() {
       && (get('elig') === 'all' || o.eligibility_status === get('elig'))
       && (!text || `${o.professor} ${o.university} ${o.program}`.toLowerCase().includes(text)))
     const dir = sort[1] === 'asc' ? 1 : -1
-    return filtered.sort((a, b) => dir * SORTERS[sort[0]](a, b))
+    const sorted = filtered.sort((a, b) => dir * SORTERS[sort[0]](a, b))
+    // One row per professor: their top degree in the current sort, the other degrees listed under it.
+    const byProf = Map.groupBy(sorted, (o) => o.professor_id)
+    return sorted.filter((o) => byProf.get(o.professor_id)![0] === o).map((o) => ({ ...o, also: byProf.get(o.professor_id)!.slice(1) }))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q.data, params, sort, text])
   const hidden = (q.data ?? []).filter((o) => o.excluded_reason).length
@@ -90,7 +93,7 @@ export function OpportunitiesPage() {
           </div>
         </div>
         <FilterSelect id="degree" label="Degree" value={get('degree')} onChange={(v) => set('degree', v)} options={Object.entries(DEGREE)} />
-        <FilterSelect id="country" label="Country" value={get('country')} onChange={(v) => set('country', v)} options={Object.entries(COUNTRY)} />
+        <FilterSelect id="country" label="Country" value={get('country')} onChange={(v) => set('country', v)} options={[...new Set((q.data ?? []).map((o) => o.country).filter((c): c is string => !!c))].sort().map((c) => [c, COUNTRY[c] ?? c])} />
         <FilterSelect id="funding" label="Funding" value={get('funding')} onChange={(v) => set('funding', v)} options={Object.entries(FUNDING).map(([k, v]) => [k, v.label])} />
         <FilterSelect id="elig" label="Eligibility" value={get('elig')} onChange={(v) => set('elig', v)} options={Object.entries(ELIGIBILITY).map(([k, v]) => [k, v.label])} />
         <div className="flex h-9 items-center gap-2">
@@ -103,7 +106,7 @@ export function OpportunitiesPage() {
         <EmptyState icon={SearchX} title="No matches" action={<Button variant="outline" onClick={() => setParams({})}>Clear filters</Button>}>Try fewer filters or include ineligible opportunities.</EmptyState>
       ) : (
         <>
-          <p className="text-sm text-muted-foreground tabular" aria-live="polite">{rows.length} shown</p>
+          <p className="text-sm text-muted-foreground tabular" aria-live="polite">{rows.length} {rows.length === 1 ? 'professor' : 'professors'} shown</p>
 
           <div className="hidden overflow-hidden rounded-xl border bg-card md:block">
             <Table>
@@ -128,7 +131,13 @@ export function OpportunitiesPage() {
                         <button className="text-left font-medium hover:underline focus-visible:outline-2 focus-visible:outline-ring" onClick={(ev) => { ev.stopPropagation(); open(o.id) }}>{o.professor}</button>
                         <p className="max-w-64 truncate text-xs text-muted-foreground">{o.university} · {COUNTRY[o.country ?? ''] ?? o.country}</p>
                       </TableCell>
-                      <TableCell className="text-sm">{DEGREE[o.degree_type]}</TableCell>
+                      <TableCell className="text-sm">
+                        {DEGREE[o.degree_type]}
+                        {o.also.map((a) => (
+                          <button key={a.id} className="block text-xs text-muted-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+                            onClick={(ev) => { ev.stopPropagation(); open(a.id) }}>also {DEGREE[a.degree_type]} · {Math.round(a.overall_score)}</button>
+                        ))}
+                      </TableCell>
                       <TableCell><Pill tone={f.tone} title={f.hint}>{f.label}</Pill>{o.stipend && <p className="mt-1 text-xs text-muted-foreground tabular">{o.stipend}</p>}</TableCell>
                       <TableCell><DeadlineChip date={o.deadline} /></TableCell>
                       <TableCell><Pill tone={e.tone}>{e.label}</Pill></TableCell>
@@ -148,7 +157,7 @@ export function OpportunitiesPage() {
                   <button onClick={() => open(o.id)} className={cn('flex w-full flex-col gap-2 rounded-xl border bg-card p-3 text-left', o.excluded_reason && 'opacity-60')}>
                     <div className="flex items-center gap-3">
                       <ScoreBadge score={o.overall_score} />
-                      <div className="min-w-0"><p className="truncate font-medium">{o.professor}</p><p className="truncate text-xs text-muted-foreground">{o.university} · {DEGREE[o.degree_type]}</p></div>
+                      <div className="min-w-0"><p className="truncate font-medium">{o.professor}</p><p className="truncate text-xs text-muted-foreground">{o.university} · {[o, ...o.also].map((a) => DEGREE[a.degree_type]).join(', ')}</p></div>
                     </div>
                     <div className="flex flex-wrap gap-2"><Pill tone={f.tone}>{f.label}</Pill><Pill tone={e.tone}>{e.label}</Pill><DeadlineChip date={o.deadline} compact /></div>
                   </button>

@@ -8,6 +8,7 @@ from urllib.parse import urlsplit
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from app.core import countries
 from app.core.config import settings
 from app.core.security import UnsafeURLError
 from app.db.models import (Department, Evidence, FundingAssessment, Opportunity, Professor, Program, Source,
@@ -31,14 +32,36 @@ I need pages stating: funding guarantees or stipend amounts, tuition coverage, a
 deadlines for {term}, English language test requirements (TOEFL, IELTS, PTE) and minimum GPA.
 Return up to {n} URLs on the university's own website, best first, one per line, nothing else."""
 
-# §7.2 defaults when no verified page evidence exists: (status, basis, timing, counts_for_visa_proof)
+# §7.2 defaults when no verified page evidence exists, by funding system (core/countries.py):
+# (status, basis, timing, counts_for_visa_proof). Missing pairs fall back to unknown.
+UNFUNDED = ("unfunded", "unknown", "unknown", False)
 DEFAULTS = {
-    ("US", "phd"): ("potential", "program_guarantee", "at_admission", None),
-    ("US", "thesis_masters"): ("potential", "unknown", "after_admission", None),
-    ("US", "course_masters"): ("unfunded", "unknown", "after_enrollment", False),
-    ("CA", "phd"): ("potential", "supervisor", "at_admission", None),
-    ("CA", "thesis_masters"): ("potential", "supervisor", "at_admission", None),
-    ("CA", "course_masters"): ("unfunded", "unknown", "unknown", False),
+    ("us", "phd"): ("potential", "program_guarantee", "at_admission", None),
+    ("us", "thesis_masters"): ("potential", "unknown", "after_admission", None),
+    ("us", "course_masters"): ("unfunded", "unknown", "after_enrollment", False),
+    ("ca", "phd"): ("potential", "supervisor", "at_admission", None),
+    ("ca", "thesis_masters"): ("potential", "supervisor", "at_admission", None),
+    ("ca", "course_masters"): UNFUNDED,
+    # UK/Ireland: competitive studentships for PhDs; research master's (MRes/MPhil) funding varies.
+    ("studentship", "phd"): ("potential", "competitive_scholarship", "at_admission", None),
+    ("studentship", "course_masters"): UNFUNDED,
+    # Germany, Netherlands, Nordics…: the PhD is a salaried post on the supervisor's grant; master's carry no stipend.
+    ("position", "phd"): ("potential", "supervisor", "at_admission", None),
+    ("position", "thesis_masters"): UNFUNDED,
+    ("position", "course_masters"): UNFUNDED,
+    # France, Spain, Italy, Portugal: competitive doctoral contracts.
+    ("contract", "phd"): ("potential", "competitive_scholarship", "at_admission", None),
+    ("contract", "thesis_masters"): UNFUNDED,
+    ("contract", "course_masters"): UNFUNDED,
+    # Australia/NZ: research scholarships (RTP and similar) cover PhDs and research master's.
+    ("anz", "phd"): ("potential", "competitive_scholarship", "at_admission", None),
+    ("anz", "thesis_masters"): ("potential", "competitive_scholarship", "at_admission", None),
+    ("anz", "course_masters"): UNFUNDED,
+    # Japan: MEXT and university scholarships. Korea: lab-funded research assistantships.
+    ("jp", "phd"): ("potential", "competitive_scholarship", "at_admission", None),
+    ("jp", "thesis_masters"): ("potential", "competitive_scholarship", "at_admission", None),
+    ("kr", "phd"): ("potential", "supervisor", "at_admission", None),
+    ("kr", "thesis_masters"): ("potential", "supervisor", "at_admission", None),
 }
 SOURCE_BASIS = {"research": "research_assistantship", "teaching": "teaching_assistantship",
                 "fellowship": "competitive_scholarship", "scholarship": "competitive_scholarship"}
@@ -65,7 +88,7 @@ def _number(value: str | None) -> float | None:
 def classify_funding(country: str | None, degree_type: str, verified: dict[str, str | None],
                      sources: list[str], conditions: list[str], has_unverified_claims: bool) -> dict:
     """Deterministic funding classification. LLM output only supplies quoted facts."""
-    status, basis, timing, visa = DEFAULTS.get((country, degree_type), ("unknown", "unknown", "unknown", None))
+    status, basis, timing, visa = DEFAULTS.get((countries.system(country), degree_type), ("unknown", "unknown", "unknown", None))
     method, notes = "default", [f"No verified funding statement; default for {country or '?'} {degree_type}."]
 
     guaranteed = (verified.get("guaranteed_funding") or "").lower() == "yes"
