@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
-import { Compass, GraduationCap, KanbanSquare, LayoutDashboard, ListFilter, Menu, PenLine, UserRound } from 'lucide-react'
+import { Bookmark, CalendarDays, FilePenLine, GraduationCap, Kanban, LayoutDashboard, Menu, Microscope, Search, Settings, UserRound, type LucideIcon } from 'lucide-react'
 import { useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, NavLink, Outlet } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { api, CLOSED } from '@/lib/api'
@@ -9,49 +9,112 @@ import { daysUntil } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { ThemeToggle } from './theme'
 
-const NAV = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/opportunities', label: 'Opportunities', icon: ListFilter },
-  { to: '/tracker', label: 'Tracker', icon: KanbanSquare, badge: 'due' as const },
-  { to: '/drafts', label: 'Draft studio', icon: PenLine },
-  { to: '/discover', label: 'Discover', icon: Compass },
-  { to: '/profile', label: 'Profile', icon: UserRound },
+type Item = { to: string; label: string; icon: LucideIcon; end?: boolean; badge?: 'due' | 'saved' }
+const NAV: { group: string; items: Item[] }[] = [
+  { group: 'Workspace', items: [
+    { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
+    { to: '/opportunities', label: 'Discover', icon: Search },
+    { to: '/shortlist', label: 'Shortlist', icon: Bookmark, badge: 'saved' },
+    { to: '/researchers', label: 'Researchers', icon: Microscope },
+  ] },
+  { group: 'Applications', items: [
+    { to: '/tracker', label: 'Application Tracker', icon: Kanban, badge: 'due' },
+    { to: '/drafts', label: 'Writing Studio', icon: FilePenLine },
+  ] },
+  { group: 'Personal', items: [
+    { to: '/profile', label: 'Academic Profile', icon: UserRound },
+    { to: '/settings', label: 'Settings', icon: Settings },
+  ] },
 ]
 
-function useDueCount() {
+function useCounts() {
   const { data } = useQuery({ queryKey: ['applications'], queryFn: api.applications })
-  return (data ?? []).filter((a) => !CLOSED.includes(a.status) && (daysUntil(a.next_action_at) ?? 99) <= 2).length
+  const apps = data ?? []
+  return {
+    due: apps.filter((a) => !CLOSED.includes(a.status) && (daysUntil(a.next_action_at) ?? 99) <= 2).length,
+    saved: apps.filter((a) => a.status === 'shortlisted').length,
+  }
+}
+
+function Wordmark() {
+  return (
+    <Link to="/" aria-label="Research Scout, overview" className="flex items-center gap-2.5 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring">
+      <GraduationCap aria-hidden className="size-8 text-navy" strokeWidth={1.75} />
+      <span className="leading-none">
+        <span className="block font-heading text-[1.3rem] font-semibold tracking-[-0.01em] text-navy">Research Scout</span>
+        <span className="mt-1 block text-xs text-muted-foreground">Find. Verify. Apply.</span>
+      </span>
+    </Link>
+  )
 }
 
 function Nav({ onNavigate }: { onNavigate?: () => void }) {
-  const due = useDueCount()
+  const { due, saved } = useCounts()
   return (
-    <nav aria-label="Main" className="flex flex-col gap-0.5">
-      {NAV.map(({ to, label, icon: Icon, end, badge }) => (
-        <NavLink key={to} to={to} end={end} onClick={onNavigate}
-          className={({ isActive }) => cn(
-            'group flex h-9 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors duration-150',
-            'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
-            isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground',
-          )}>
-          <Icon aria-hidden className="size-4 shrink-0" />
-          <span className="flex-1">{label}</span>
-          {badge === 'due' && due > 0 && (
-            <span className="rounded-full bg-warning px-1.5 text-[11px] font-semibold leading-5 text-warning-foreground tabular" aria-label={`${due} actions due soon`}>{due}</span>
-          )}
-        </NavLink>
+    <nav aria-label="Main" className="space-y-5">
+      {NAV.map(({ group, items }) => (
+        <div key={group}>
+          <p className="mb-1.5 px-3 text-[0.6875rem] font-medium tracking-[0.06em] text-meta uppercase">{group}</p>
+          <ul className="space-y-0.5">
+            {items.map(({ to, label, icon: Icon, end, badge }) => (
+              <li key={to}>
+                <NavLink to={to} end={end} onClick={onNavigate}
+                  className={({ isActive }) => cn(
+                    'flex h-10 items-center gap-3 rounded-lg px-3 text-[0.9375rem] font-medium transition-colors duration-(--dur-micro)',
+                    'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+                    isActive ? 'bg-signal text-signal-ink' : 'text-ink-soft hover:bg-well hover:text-foreground',
+                  )}>
+                  <Icon aria-hidden className="size-[18px] shrink-0" />
+                  <span className="flex-1">{label}</span>
+                  {badge === 'saved' && saved > 0 && <span className="num text-xs opacity-75" aria-label={`${saved} saved`}>{saved}</span>}
+                  {badge === 'due' && due > 0 && <span className="num rounded-full bg-warning-soft px-1.5 text-xs text-warning" aria-label={`${due} actions due soon`}>{due}</span>}
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+        </div>
       ))}
     </nav>
   )
 }
 
-function Brand() {
+/** The intake the whole search is aimed at, read from the profile. */
+function IntakeSummary() {
+  const { data } = useQuery({ queryKey: ['profile'], queryFn: api.profile, retry: false })
+  if (!data?.intended_start_term) return null
   return (
-    <div className="flex items-center gap-2.5 px-3">
-      <div className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground"><GraduationCap aria-hidden className="size-4.5" /></div>
-      <div className="leading-tight">
-        <p className="font-heading text-lg font-semibold">Research Scout</p>
-        <p className="text-[11px] text-muted-foreground">Funded grad positions</p>
+    <Link to="/profile" className="flex gap-3 rounded-xl bg-well px-4 py-3.5 transition-colors hover:bg-well-2 focus-visible:outline-2 focus-visible:outline-ring">
+      <CalendarDays aria-hidden className="mt-0.5 size-[18px] shrink-0 text-navy" />
+      <span>
+        <span className="block font-semibold text-foreground">{data.intended_start_term}</span>
+        <span className="block text-xs text-muted-foreground">Master’s · PhD<br />USA &amp; Canada</span>
+      </span>
+    </Link>
+  )
+}
+
+function UserRow() {
+  const { data } = useQuery({ queryKey: ['profile'], queryFn: api.profile, retry: false })
+  const name = data?.name || 'Your profile'
+  return (
+    <div className="flex items-center gap-2.5 border-t border-border pt-4">
+      <Link to="/profile" className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md focus-visible:outline-2 focus-visible:outline-ring">
+        <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-full bg-navy text-sm font-semibold text-navy-ink">{name[0]?.toUpperCase()}</span>
+        <span className="truncate text-sm font-medium text-foreground">{name}</span>
+      </Link>
+      <ThemeToggle />
+    </div>
+  )
+}
+
+function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
+  return (
+    <div className="flex h-full flex-col gap-8 px-4 py-6">
+      <div className="px-2"><Wordmark /></div>
+      <Nav onNavigate={onNavigate} />
+      <div className="mt-auto space-y-4">
+        <IntakeSummary />
+        <UserRow />
       </div>
     </div>
   )
@@ -59,37 +122,28 @@ function Brand() {
 
 export function Layout() {
   const [open, setOpen] = useState(false)
-  const { pathname } = useLocation()
-  const current = NAV.find((n) => (n.end ? pathname === n.to : pathname.startsWith(n.to)))
   return (
-    <div className="min-h-dvh bg-background">
-      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-primary-foreground">Skip to content</a>
+    <div className="min-h-dvh lg:grid lg:grid-cols-[240px_1fr]">
+      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-[600] focus:rounded-md focus:bg-navy focus:px-3 focus:py-2 focus:text-navy-ink">Skip to content</a>
 
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-60 flex-col gap-6 border-r bg-sidebar py-5 lg:flex">
-        <Brand />
-        <div className="px-3"><Nav /></div>
-        <div className="mt-auto flex items-center justify-between px-5 text-xs text-muted-foreground">
-          <span>USA · Canada</span>
-          <ThemeToggle />
-        </div>
+      <aside className="hidden border-r border-border bg-sidebar lg:block">
+        <div className="sticky top-0 h-dvh overflow-y-auto"><SidebarBody /></div>
       </aside>
 
-      <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b bg-background/90 px-4 backdrop-blur lg:hidden">
-        <Button variant="ghost" size="icon" aria-label="Open menu" onClick={() => setOpen(true)}><Menu className="size-5" /></Button>
-        <span className="font-heading text-lg font-semibold">{current?.label ?? 'Research Scout'}</span>
-        <div className="ml-auto"><ThemeToggle /></div>
+      <header className="sticky top-0 z-[300] flex h-14 items-center justify-between border-b border-border bg-sheet px-4 lg:hidden">
+        <Wordmark />
+        <Button type="button" variant="ghost" size="icon" aria-label="Open menu" onClick={() => setOpen(true)}><Menu /></Button>
       </header>
+
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="left" className="w-72 bg-sidebar p-0">
-          <SheetHeader className="pt-5"><SheetTitle className="sr-only">Navigation</SheetTitle><Brand /></SheetHeader>
-          <div className="px-3"><Nav onNavigate={() => setOpen(false)} /></div>
+          <SheetHeader className="sr-only"><SheetTitle>Menu</SheetTitle></SheetHeader>
+          <SidebarBody onNavigate={() => setOpen(false)} />
         </SheetContent>
       </Sheet>
 
-      <main id="main" className="lg:pl-60">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-          <Outlet />
-        </div>
+      <main id="main" className="mx-auto w-full min-w-0 max-w-[1360px] px-4 py-7 sm:px-8 lg:px-10 lg:py-9">
+        <Outlet />
       </main>
     </div>
   )

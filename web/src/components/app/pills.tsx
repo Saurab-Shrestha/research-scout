@@ -1,57 +1,62 @@
+import { CircleAlert, CircleCheck, CircleDashed, CircleHelp, CircleX } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Tone } from '@/lib/format'
-import { daysUntil, formatDate, relativeDays, urgencyTone } from '@/lib/format'
-import { CalendarClock } from 'lucide-react'
+import { daysUntil, formatDate, urgencyTone } from '@/lib/format'
 
+// Status is always a word plus an icon on a soft tint, so colour is never the only signal.
+// Uncertain states (warning/neutral) stay muted: a "likely" must never read like a "confirmed".
 const TONE: Record<Tone, string> = {
-  success: 'bg-success/12 text-success ring-success/25 dark:bg-success/15',
-  info: 'bg-info/12 text-info ring-info/25 dark:bg-info/15',
-  warning: 'bg-warning/18 text-warning-foreground ring-warning/40 dark:bg-warning/15 dark:text-warning',
-  danger: 'bg-destructive/10 text-destructive ring-destructive/25 dark:bg-destructive/15',
-  neutral: 'bg-muted text-muted-foreground ring-border',
+  success: 'bg-success-soft text-success',
+  info: 'bg-accent-soft text-signal',
+  warning: 'bg-warning-soft text-warning',
+  danger: 'bg-error-soft text-error',
+  neutral: 'bg-well text-muted-foreground',
 }
-const DOT: Record<Tone, string> = {
-  success: 'bg-success', info: 'bg-info', warning: 'bg-warning', danger: 'bg-destructive', neutral: 'bg-muted-foreground/60',
-}
+const ICON = { success: CircleCheck, info: CircleAlert, warning: CircleHelp, danger: CircleX, neutral: CircleDashed }
 
 export function Pill({ tone, children, className, title }: { tone: Tone; children: React.ReactNode; className?: string; title?: string }) {
+  const Icon = ICON[tone]
   return (
-    <span title={title} className={cn('inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset', TONE[tone], className)}>
-      <span aria-hidden className={cn('size-1.5 rounded-full', DOT[tone])} />
-      {children}
+    <span title={title} className={cn('inline-flex h-6 items-center gap-1.5 rounded-md px-2 text-xs font-medium whitespace-nowrap', TONE[tone], className)}>
+      <Icon aria-hidden className="size-3.5 shrink-0" />{children}
     </span>
   )
 }
 
+/** A date with the days left beside it; close ones are flagged in amber, past ones in red. */
 export function DeadlineChip({ date, compact }: { date: string | null; compact?: boolean }) {
   const days = daysUntil(date)
-  if (!date) return <span className="text-xs text-muted-foreground">No deadline found</span>
+  if (!date) return <span className="text-sm text-muted-foreground">Not listed</span>
   const tone = urgencyTone(days)
   return (
-    <span className="inline-flex items-center gap-1.5 text-sm tabular">
-      <CalendarClock aria-hidden className={cn('size-3.5', tone === 'danger' ? 'text-destructive' : tone === 'warning' ? 'text-warning' : 'text-muted-foreground')} />
-      <span className="font-medium">{formatDate(date)}</span>
-      {!compact && <span className={cn('text-xs', tone === 'danger' ? 'text-destructive' : tone === 'warning' ? 'text-warning-foreground dark:text-warning' : 'text-muted-foreground')}>{relativeDays(days)}</span>}
+    <span className="inline-flex items-baseline gap-2 whitespace-nowrap">
+      <span className="num text-sm text-foreground">{formatDate(date)}</span>
+      {!compact && days !== null && (
+        <span className={cn('num text-xs', tone === 'danger' ? 'text-error' : tone === 'warning' ? 'text-warning' : 'text-muted-foreground')}>
+          {days < 0 ? `${-days}d ago` : `${days}d`}
+        </span>
+      )}
     </span>
   )
 }
 
 export function ScoreBadge({ score }: { score: number }) {
-  const tone = score >= 60 ? 'bg-primary text-primary-foreground' : score >= 45 ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'
   return (
-    <span className={cn('inline-flex h-7 min-w-10 items-center justify-center rounded-md px-1.5 text-sm font-semibold tabular', tone)} aria-label={`Score ${Math.round(score)} of 100`}>
+    <span className={cn('num inline-block min-w-[2ch] text-right text-base font-semibold', score >= 60 ? 'text-foreground' : 'text-ink-soft')}
+      aria-label={`Score ${Math.round(score)} of 100`}>
       {Math.round(score)}
     </span>
   )
 }
 
-export function Meter({ value, label, className }: { value: number; label: string; className?: string }) {
+/** A single-series bar: the value as a rounded accent bar on a muted track, the figure beside it. */
+export function Meter({ value, label, className, hideValue }: { value: number; label: string; className?: string; hideValue?: boolean }) {
   return (
-    <div className={cn('flex items-center gap-2', className)}>
-      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(value)} aria-label={label}>
-        <div className="h-full rounded-full bg-primary transition-[width] duration-300" style={{ width: `${Math.max(2, Math.min(100, value))}%` }} />
+    <div className={cn('flex items-center gap-3', className)}>
+      <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-well-2" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(value)} aria-label={label}>
+        <div className="absolute inset-y-0 left-0 rounded-full bg-navy" style={{ width: `${Math.max(1, Math.min(100, value))}%` }} />
       </div>
-      <span className="w-7 text-right text-xs tabular text-muted-foreground">{Math.round(value)}</span>
+      {!hideValue && <span className="num w-7 text-right text-xs text-muted-foreground">{Math.round(value)}</span>}
     </div>
   )
 }

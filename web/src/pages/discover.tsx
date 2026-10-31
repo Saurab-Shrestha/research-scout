@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CheckCircle2, CircleDashed, Compass, ExternalLink, Link2, Loader2, Scale, XCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { PageHeader, RowsSkeleton } from '@/components/app/states'
 import { TagInput } from '@/components/app/tags'
@@ -101,7 +102,7 @@ export function DiscoverPage() {
   const qc = useQueryClient()
   const profile = useQuery({ queryKey: ['profile'], queryFn: api.profile, retry: false })
   const jobs = useQuery({ queryKey: ['jobs'], queryFn: api.jobs, refetchInterval: (q) => (q.state.data?.some((j) => j.status === 'running' || j.status === 'queued') ? 3000 : false) })
-  const profs = useQuery({ queryKey: ['professors'], queryFn: api.professors })
+  const profs = useQuery({ queryKey: ['professors'], queryFn: () => api.professors(200) })
   const [areas, setAreas] = useState<string[]>([])
   const [countries, setCountries] = useState<('US' | 'CA')[]>(['US', 'CA'])
   const [max, setMax] = useState(20)
@@ -128,7 +129,7 @@ export function DiscoverPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Discover" description="Find active professors from publication data, then check their programs for funding, deadlines and eligibility." />
+      <PageHeader title="Find Researchers" description="Find active professors from publication data, then check their programs for funding, deadlines and eligibility." />
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
@@ -208,7 +209,7 @@ export function DiscoverPage() {
               <TableBody>
                 {(profs.data ?? []).map((p) => (
                   <TableRow key={p.id}>
-                    <TableCell className="pl-4"><p className="font-medium">{p.name}</p>{p.title && <p className="max-w-56 truncate text-xs text-muted-foreground">{p.title}</p>}</TableCell>
+                    <TableCell className="pl-4"><Link to={`/researchers/${p.id}`} className="font-medium text-foreground hover:text-signal hover:underline">{p.name}</Link>{p.title && <p className="max-w-56 truncate text-xs text-muted-foreground">{p.title}</p>}</TableCell>
                     <TableCell className="text-sm">{p.university ?? <span className="text-muted-foreground">Unknown</span>}</TableCell>
                     <TableCell className="hidden max-w-sm md:table-cell"><p className="line-clamp-2 text-xs text-muted-foreground">{p.research_summary ?? 'No summary yet'}</p></TableCell>
                     <TableCell className="pr-4 text-right">

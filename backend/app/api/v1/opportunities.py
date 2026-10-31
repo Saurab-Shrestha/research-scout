@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.models import (CandidateProfile, Evidence, FundingAssessment, MatchResult, Opportunity, Professor,
-                           Program, ResearchJob, University)
+                           Program, ResearchJob, Source, University)
 from app.db.session import get_db
 from app.services import llm, matching
 
@@ -28,6 +28,7 @@ class OpportunityOut(BaseModel):
     professor_id: str
     professor: str
     faculty_url: str | None
+    accepting_students: bool | None = None  # the faculty page's own statement; never inferred
     university: str
     country: str | None
     program: str
@@ -64,7 +65,8 @@ def _rows(db: Session, opportunity_id: uuid.UUID | None = None):
 def _out(o, m, p, prog, u, f) -> OpportunityOut:
     return OpportunityOut(
         id=str(o.id), title=o.title, degree_type=o.degree_type, professor_id=str(p.id), professor=p.name,
-        faculty_url=p.faculty_url, university=u.name, country=u.country, program=prog.name, program_url=prog.url,
+        faculty_url=p.faculty_url, accepting_students=p.accepting_students,
+        university=u.name, country=u.country, program=prog.name, program_url=prog.url,
         deadline=prog.deadline, funding_status=f.funding_status, funding_explanation=f.explanation,
         stipend=_stipend(f), eligibility_status=m.eligibility_status, excluded_reason=m.excluded_reason,
         scores={"research": m.research_score, "funding": m.funding_score, "eligibility": m.eligibility_score,
@@ -103,12 +105,14 @@ def get_opportunity(opportunity_id: uuid.UUID, db: Session = Depends(get_db)):
         raise HTTPException(404, "Opportunity not found or not scored yet")
     opp = _out(*rows[0])
     program = rows[0][3]
-    evidence = db.scalars(select(Evidence).where(Evidence.entity_type == "program", Evidence.entity_id == program.id)
+    evidence = db.execute(select(Evidence, Source.url, Source.fetched_at).join(Source, Source.id == Evidence.source_id)
+                          .where(Evidence.entity_type == "program", Evidence.entity_id == program.id)
                           .order_by(Evidence.field_name)).all()
     return {**opp.model_dump(mode="json"), "requirements": program.requirements_json,
             "program_evidence": [{"field": e.field_name, "value": (e.claim_value_json or {}).get("value"),
-                                  "quote": e.excerpt, "status": e.verification_status, "source_id": str(e.source_id)}
-                                 for e in evidence]}
+                                  "quote": e.excerpt, "status": e.verification_status, "source_id": str(e.source_id),
+                                  "source_url": url, "checked_at": fetched.isoformat() if fetched else None}
+                                 for e, url, fetched in evidence]}
 
 
 @router.post("/{opportunity_id}/evaluate", response_model=OpportunityOut)

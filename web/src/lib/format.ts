@@ -5,11 +5,11 @@ export const DEGREE: Record<Degree, string> = { phd: 'PhD', thesis_masters: 'The
 export type Tone = 'success' | 'info' | 'warning' | 'danger' | 'neutral'
 
 export const FUNDING: Record<string, { label: string; tone: Tone; hint: string }> = {
-  confirmed_full: { label: 'Fully funded', tone: 'success', hint: 'Official page guarantees tuition and stipend' },
-  confirmed_partial: { label: 'Partly funded', tone: 'info', hint: 'Official page confirms some funding' },
-  potential: { label: 'Likely funded', tone: 'warning', hint: 'Typical for this degree; not confirmed on an official page' },
+  confirmed_full: { label: 'Confirmed full', tone: 'success', hint: 'An official page guarantees tuition and a stipend' },
+  confirmed_partial: { label: 'Confirmed partial', tone: 'info', hint: 'Official page confirms some funding' },
+  potential: { label: 'Potential funding', tone: 'warning', hint: 'Usual for this degree and country, not confirmed on an official page' },
   unfunded: { label: 'Unfunded', tone: 'danger', hint: 'Official page says no funding' },
-  unknown: { label: 'Unknown', tone: 'neutral', hint: 'No funding information found' },
+  unknown: { label: 'Funding unknown', tone: 'neutral', hint: 'No funding information found' },
 }
 export const funding = (s: FundingStatus) => FUNDING[s] ?? { label: s.replace(/_/g, ' '), tone: 'neutral' as Tone, hint: '' }
 

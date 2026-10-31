@@ -1,0 +1,54 @@
+/* Research Scout design tokens (Editorial Research Intelligence spec § 3). Token names are kept from the
+   previous theme so every page restyles from here; values follow the spec palette. */
+:root {
+  color-scheme: light dark;
+  --space-3xs: 2px; --space-2xs: 4px; --space-xs: 8px; --space-sm: 12px; --space-md: 16px; --space-lg: 24px; --space-xl: 32px; --space-2xl: 48px; --space-3xl: 96px; --space-4xl: 144px;
+  --text-xs: 0.75rem; --text-sm: 0.8125rem; --text-md: 0.9375rem; --text-lg: 1.125rem; --text-xl: 1.3125rem; --text-2xl: 1.5rem; --text-3xl: 2.125rem;
+  --text-display-s: 1.5rem; --text-display: 2.125rem; --text-section: 1.375rem; --text-title: 1.0625rem; --text-lead: 1rem;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1); --ease-in: cubic-bezier(0.7, 0, 0.84, 0); --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 120ms; --dur-short: 220ms; --dur-long: 420ms;
+  --container: 1440px; --gutter: 40px; --gap-columns: 24px; --section-gap-s: 32px; --section-gap: 40px; --section-gap-l: 48px;
+  --z-base: 1; --z-raised: 10; --z-dropdown: 100; --z-sticky: 200; --z-sticky-nav: 300; --z-modal: 400; --z-toast: 500; --z-tooltip: 600;
+
+  --color-paper: #F7F8FA;      /* canvas */
+  --color-sheet: #FFFFFF;      /* surface */
+  --color-paper-2: #F0F2F5;    /* surface muted */
+  --color-paper-3: #E9ECF1;
+  --color-ink: #172033;        /* primary text */
+  --color-ink-2: #344054;
+  --color-ink-3: #667085;      /* secondary text */
+  --color-ink-4: #98A2B3;      /* metadata */
+  --color-rule: #E4E7EC;
+  --color-rule-2: #D0D5DD;
+  /* #477FE8 is the spec accent; text and fills use a step darker so white-on-blue and blue-on-white pass AA. */
+  --color-accent-soft: #EAF1FD;
+  --color-signal: #3B73DE; --color-signal-2: #2F62C4; --color-signal-ink: #FFFFFF; --color-focus: #477FE8;
+  --color-navy: #17345F; --color-navy-2: #10264A; --color-navy-ink: #FFFFFF;
+  --color-success: #168568; --color-success-soft: #E7F5F0;
+  --color-warning: #A86A0B; --color-warning-soft: #FDF4E3; /* #D99526 for marks; text darkened for contrast */
+  --color-error: #D64545; --color-error-soft: #FCECEC;
+  --color-overlay: rgb(23 32 51 / 0.45);
+
+  --font-display: "Source Serif 4 Variable", ui-serif, Georgia, serif;
+  --font-body: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-outlier: "JetBrains Mono Variable", ui-monospace, monospace;
+  --radius-card: 12px; --radius-pill: 8px; --rule-hair: 1px; --rule-bar: 1px;
+  --shadow-card: 0 1px 2px rgb(16 24 40 / 0.04);
+  --shadow-overlay: 0 12px 32px -8px rgb(16 24 40 / 0.18);
+  --tracking-display: -0.015em; --display-weight: 600;
+}
+
+.dark {
+  color-scheme: dark;
+  --color-paper: #0E1320; --color-sheet: #151B2B; --color-paper-2: #1B2234; --color-paper-3: #232B40;
+  --color-ink: #EEF1F6; --color-ink-2: #CDD3DE; --color-ink-3: #98A2B3; --color-ink-4: #7A8496;
+  --color-rule: #262F45; --color-rule-2: #36405A;
+  --color-accent-soft: #1A2846;
+  --color-signal: #6E9CF0; --color-signal-2: #8DB1F4; --color-signal-ink: #0E1320; --color-focus: #6E9CF0;
+  --color-navy: #6E9CF0; --color-navy-2: #8DB1F4; --color-navy-ink: #0E1320;
+  --color-success: #4CC29E; --color-success-soft: #12302A;
+  --color-warning: #E5AE4F; --color-warning-soft: #33280F;
+  --color-error: #EF7A7A; --color-error-soft: #3A1A1D;
+  --color-overlay: rgb(5 8 15 / 0.6);
+  --shadow-card: none;
+}

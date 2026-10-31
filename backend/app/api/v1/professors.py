@@ -1,11 +1,12 @@
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.db.models import Evidence, Professor, ProfessorPublication, Publication, University
+from app.db.models import Evidence, Professor, ProfessorPublication, Publication, Source, University
 from app.db.session import get_db
 from app.services import page_finder, publications
 from app.services.llm import LLMError
@@ -21,6 +22,8 @@ class EvidenceOut(BaseModel):
     value: str | None
     excerpt: str
     verification_status: str
+    source_url: str | None = None
+    checked_at: datetime | None = None
 
 
 class PublicationOut(BaseModel):
@@ -47,12 +50,17 @@ class ProfessorOut(BaseModel):
     accepting_students: bool | None
     university_id: str | None
     university: str | None = None
+    country: str | None = None
     department_id: str | None
+    # Directory-only summary of publication activity; detail responses carry the full list instead.
+    publication_count: int | None = None
+    latest_publication_year: int | None = None
     evidence: list[EvidenceOut] = []
     publications: list[PublicationOut] = []
 
 
-def _to_out(p: Professor, university: str | None = None, evidence: list[Evidence] = (),
+def _to_out(p: Professor, university: str | None = None,
+            evidence: list[tuple[Evidence, str | None, datetime | None]] = (),
             pubs: list[tuple[Publication, str | None]] = ()) -> ProfessorOut:
     return ProfessorOut(
         id=str(p.id), name=p.name, title=p.title, email=p.email, faculty_url=p.faculty_url,
@@ -63,8 +71,8 @@ def _to_out(p: Professor, university: str | None = None, evidence: list[Evidence
         evidence=[EvidenceOut(
             id=str(e.id), source_id=str(e.source_id), field_name=e.field_name,
             value=(e.claim_value_json or {}).get("value"), excerpt=e.excerpt,
-            verification_status=e.verification_status,
-        ) for e in evidence],
+            verification_status=e.verification_status, source_url=url, checked_at=fetched,
+        ) for e, url, fetched in evidence],
         publications=[PublicationOut(
             id=str(pub.id), title=pub.title, publication_year=pub.publication_year, doi=pub.doi,
             arxiv_id=pub.arxiv_id, url=pub.url, open_access_url=pub.open_access_url,
@@ -76,13 +84,20 @@ def _to_out(p: Professor, university: str | None = None, evidence: list[Evidence
 @router.get("", response_model=list[ProfessorOut])
 def list_professors(q: str | None = None, ids: list[uuid.UUID] | None = Query(None), limit: int = 50,
                     db: Session = Depends(get_db)):
-    stmt = (select(Professor, University.name).outerjoin(University, University.id == Professor.university_id)
+    activity = (select(ProfessorPublication.professor_id, func.count().label("n"),
+                       func.max(Publication.publication_year).label("latest"))
+                .join(Publication, Publication.id == ProfessorPublication.publication_id)
+                .group_by(ProfessorPublication.professor_id).subquery())
+    stmt = (select(Professor, University.name, University.country, activity.c.n, activity.c.latest)
+            .outerjoin(University, University.id == Professor.university_id)
+            .outerjoin(activity, activity.c.professor_id == Professor.id)
             .order_by(Professor.name).limit(min(limit, 200)))
     if q:
         stmt = stmt.where(Professor.name.ilike(f"%{q}%"))
     if ids:
         stmt = stmt.where(Professor.id.in_(ids))
-    return [_to_out(p, uni) for p, uni in db.execute(stmt)]
+    return [_to_out(p, uni).model_copy(update={"country": country, "publication_count": n or 0, "latest_publication_year": latest})
+            for p, uni, country, n, latest in db.execute(stmt)]
 
 
 @router.get("/{professor_id}", response_model=ProfessorOut)
@@ -90,7 +105,7 @@ def get_professor(professor_id: uuid.UUID, db: Session = Depends(get_db)):
     professor = db.get(Professor, professor_id)
     if professor is None:
         raise HTTPException(404, "Professor not found")
-    evidence = db.scalars(select(Evidence).where(
+    evidence = db.execute(select(Evidence, Source.url, Source.fetched_at).join(Source, Source.id == Evidence.source_id).where(
         Evidence.entity_type == "professor", Evidence.entity_id == professor_id,
     ).order_by(Evidence.field_name)).all()
     pubs = db.execute(

@@ -227,7 +227,7 @@ export function DraftsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Draft studio" description="Emails to professors and statement-of-purpose outlines, grounded in their papers and your profile." />
+      <PageHeader title="Writing Studio" description="Emails to professors and statement-of-purpose outlines, grounded in their papers and your profile." />
       {opps.isError && <ErrorState error={opps.error} retry={() => opps.refetch()} />}
       <div className="grid gap-6 lg:grid-cols-[16rem_1fr] xl:grid-cols-[16rem_1fr_20rem]">
         <aside aria-label="Choose an opportunity"><Picker selected={selected} onSelect={(id) => setParam('for', id)} /></aside>

@@ -77,7 +77,7 @@ export function OpportunitiesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Opportunities" description="Every professor × degree we’ve checked, ranked by research fit, funding, eligibility, availability and timing." />
+      <PageHeader title="Discover Opportunities" description="Every professor × degree we’ve checked, ranked by research fit, funding, eligibility, availability and timing." />
 
       <div className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-3">
         <div className="min-w-56 flex-1 space-y-1.5">

@@ -1,8 +1,8 @@
 import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type Announcements, type DragEndEvent, type KeyboardCoordinateGetter, type UniqueIdentifier } from '@dnd-kit/core'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Archive, GripVertical, KanbanSquare, Mail, MoreHorizontal, Trash2 } from 'lucide-react'
+import { Archive, GripVertical, History, KanbanSquare, Mail, MoreHorizontal, Table2, Trash2 } from 'lucide-react'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useOpportunityParam } from '@/components/app/opportunity-sheet'
 import { DeadlineChip } from '@/components/app/pills'
@@ -54,7 +54,7 @@ function CardBody({ a }: { a: Application }) {
         <span className="mt-1 inline-block rounded bg-muted px-1.5 py-0.5 text-[11px] font-medium">{STATUS_LABEL[a.status]}</span>
       )}
       {a.next_action && !CLOSED.includes(a.status) && (
-        <div className={cn('mt-2 rounded-md px-2 py-1.5 text-xs', tone === 'danger' ? 'bg-destructive/10 text-destructive' : tone === 'warning' ? 'bg-warning/15 text-warning-foreground dark:text-warning' : 'bg-muted text-muted-foreground')}>
+        <div className={cn('mt-2 rounded-md px-2 py-1.5 text-xs', tone === 'danger' ? 'bg-error-soft text-error' : tone === 'warning' ? 'bg-warning-soft text-warning' : 'bg-muted text-muted-foreground')}>
           <p className="font-medium">{a.next_action}</p>
           {a.next_action_at && <p className="tabular">{days! < 0 ? `Overdue by ${-days!} days` : `Due ${relativeDays(days)}`} · {formatDate(a.next_action_at)}</p>}
         </div>
@@ -193,6 +193,68 @@ function EditDialog({ a, onClose }: { a: Application | null; onClose: () => void
   )
 }
 
+const VIEWS = [['board', 'Board', KanbanSquare], ['table', 'Table', Table2], ['activity', 'Activity', History]] as const
+type View = (typeof VIEWS)[number][0]
+
+function TrackerTable({ apps, onEdit }: { apps: Application[]; onEdit: (a: Application) => void }) {
+  const rows = [...apps].sort((a, b) => (a.next_action_at ?? '9').localeCompare(b.next_action_at ?? '9'))
+  return (
+    <div className="sheet overflow-x-auto">
+      <table className="w-full min-w-[760px] text-left text-sm">
+        <thead>
+          <tr className="border-b border-border text-xs text-muted-foreground">
+            {['Professor', 'Program', 'Stage', 'Next action', 'Deadline', 'Last contact'].map((h) => <th key={h} scope="col" className="px-4 py-3 font-medium">{h}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((a) => {
+            const days = daysUntil(a.next_action_at)
+            return (
+              <tr key={a.id} className="border-b border-border align-top last:border-b-0 hover:bg-well/60">
+                <td className="px-4 py-3">
+                  <button type="button" onClick={() => onEdit(a)} className="text-left font-medium text-foreground hover:text-signal hover:underline focus-visible:outline-2 focus-visible:outline-ring">{a.professor}</button>
+                  <p className="text-xs text-muted-foreground">{a.university}</p>
+                </td>
+                <td className="px-4 py-3 text-ink-soft">{DEGREE[a.degree_type]}</td>
+                <td className="px-4 py-3"><span className="rounded-md bg-well px-2 py-0.5 text-xs font-medium text-foreground">{STATUS_LABEL[a.status]}</span></td>
+                <td className="px-4 py-3">
+                  <p className="text-foreground">{a.next_action ?? '—'}</p>
+                  {a.next_action_at && <p className={cn('num text-xs', days! < 0 ? 'text-error' : days! <= 2 ? 'text-warning' : 'text-muted-foreground')}>{days! < 0 ? `Overdue by ${-days!} days` : `Due ${relativeDays(days)}`}</p>}
+                </td>
+                <td className="px-4 py-3"><DeadlineChip date={a.deadline} /></td>
+                <td className="num px-4 py-3 text-ink-soft">{a.contacted_at ? formatDate(a.contacted_at, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Not yet'}</td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+/** Every recorded stage change across applications, newest first. */
+function ActivityLog({ apps }: { apps: Application[] }) {
+  const events = apps.flatMap((a) => a.history.map((h) => ({ ...h, a }))).sort((x, y) => y.at.localeCompare(x.at))
+  if (events.length === 0) return <p className="text-muted-foreground">No activity recorded yet.</p>
+  return (
+    <ol className="sheet relative space-y-0 p-5">
+      {events.map((e, i) => (
+        <li key={i} className="relative grid grid-cols-[1.25rem_1fr] gap-3 pb-4 last:pb-0">
+          {i < events.length - 1 && <span aria-hidden className="absolute top-4 bottom-0 left-[5px] w-px bg-border" />}
+          <span aria-hidden className="mt-1.5 size-[11px] rounded-full border-2 border-signal bg-sheet" />
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4">
+            <p className="text-sm text-foreground">
+              {e.status === 'shortlisted' && i === events.findLastIndex((x) => x.a.id === e.a.id) ? 'Saved' : 'Moved to'} <span className="font-medium">{STATUS_LABEL[e.status as AppStatus] ?? e.status}</span>
+              <span className="text-muted-foreground"> · {e.a.professor}, {e.a.university}</span>
+            </p>
+            <time dateTime={e.at} className="text-xs text-muted-foreground">{new Date(e.at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</time>
+          </div>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
 const COLUMN_STEP = 300  // column width (w-72) plus gap
 /** Arrow keys move a lifted card one column at a time instead of dnd-kit's default 25px nudge. */
 const columnStep: KeyboardCoordinateGetter = (event, { currentCoordinates: c }) => {
@@ -211,6 +273,9 @@ export function TrackerPage() {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { keyboardCodes: { start: ['Space'], cancel: ['Escape'], end: ['Space', 'Enter'] }, coordinateGetter: columnStep }))
   const apps = q.data ?? []
+  const [params, setParams] = useSearchParams()
+  const view: View = VIEWS.some(([v]) => v === params.get('view')) ? params.get('view') as View : 'board'
+  const setView = (v: View) => setParams((p) => { if (v === 'board') p.delete('view'); else p.set('view', v); return p }, { replace: true })
 
   const name = (id: UniqueIdentifier) => apps.find((x) => x.id === id)?.professor ?? 'Card'
   const column = (id?: UniqueIdentifier) => COLUMNS.find((c) => c.id === id)?.label ?? 'no stage'
@@ -234,12 +299,24 @@ export function TrackerPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Tracker" description="Drag cards between stages, or use a card’s menu. With a keyboard, focus the grip and press space. Each move updates the suggested next step." />
+      <PageHeader title="Application Tracker" description="Drag cards between stages, or use a card’s menu. With a keyboard, focus the grip and press space. Each move updates the suggested next step."
+        actions={apps.length > 0 && (
+          <div role="group" aria-label="View" className="inline-flex rounded-lg border border-border bg-sheet p-0.5">
+            {VIEWS.map(([v, label, Icon]) => (
+              <button key={v} type="button" aria-pressed={view === v} onClick={() => setView(v)}
+                className={cn('inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring',
+                  view === v ? 'bg-signal text-signal-ink' : 'text-muted-foreground hover:text-foreground')}>
+                <Icon aria-hidden className="size-4" />{label}
+              </button>
+            ))}
+          </div>
+        )} />
       {q.isError ? <ErrorState error={q.error} retry={() => q.refetch()} /> : q.isLoading ? <RowsSkeleton rows={4} /> : apps.length === 0 ? (
         <EmptyState icon={KanbanSquare} title="Your pipeline is empty" action={<Button asChild><Link to="/opportunities">Browse opportunities</Link></Button>}>
-          Open an opportunity and choose “Save to tracker” to start.
+          Open an opportunity and choose “Add to shortlist” to start.
         </EmptyState>
-      ) : (
+      ) : view === 'table' ? <TrackerTable apps={apps} onEdit={setEditing} />
+        : view === 'activity' ? <ActivityLog apps={apps} /> : (
         <DndContext sensors={sensors} accessibility={{ announcements, screenReaderInstructions: { draggable: 'Press space to pick up the card. Use left and right arrows to change stage, space to drop, escape to cancel.' } }} onDragStart={(e) => setDragging(apps.find((a) => a.id === e.active.id) ?? null)} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
           <div className="-mx-4 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
             <div className="flex gap-3">

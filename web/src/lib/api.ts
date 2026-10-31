@@ -17,6 +17,7 @@ export interface Opportunity {
   professor_id: string
   professor: string
   faculty_url: string | null
+  accepting_students?: boolean | null
   university: string
   country: string | null
   program: string
@@ -32,9 +33,11 @@ export interface Opportunity {
   explanation: { research_matches?: ResearchMatch[]; eligibility_checks?: Check[]; funding?: string; weights?: Record<string, number> }
 }
 
+export interface ProgramEvidence { field: string; value: string | null; quote: string; status: string; source_id: string; source_url: string | null; checked_at: string | null }
+
 export interface OpportunityDetail extends Opportunity {
   requirements: { pages?: { url: string; result: string }[]; english?: { test: string; minimum: string | null }[]; [k: string]: unknown }
-  program_evidence: { field: string; value: string | null; quote: string; status: string; source_id: string }[]
+  program_evidence: ProgramEvidence[]
 }
 
 export const STATUSES = ['shortlisted', 'researching', 'contacted', 'replied', 'applying', 'submitted',
@@ -83,8 +86,8 @@ export interface Professor {
   id: string; name: string; title: string | null; email: string | null; faculty_url: string | null
   research_summary: string | null; openalex_id: string | null; orcid: string | null
   accepting_students: boolean | null; university_id: string | null; university: string | null
-  department_id: string | null
-  evidence: { id: string; source_id: string; field_name: string; value: string | null; excerpt: string; verification_status: string }[]
+  department_id: string | null; country?: string | null; publication_count?: number | null; latest_publication_year?: number | null
+  evidence: { id: string; source_id: string; field_name: string; value: string | null; excerpt: string; verification_status: string; source_url: string | null; checked_at: string | null }[]
   publications: Publication[]
 }
 
@@ -143,7 +146,7 @@ export const api = {
   drafts: (opportunityId: string) => request<Draft[]>('GET', `/opportunities/${opportunityId}/drafts`),
   createDraft: (opportunityId: string, kind: Draft['kind']) => request<Draft>('POST', `/opportunities/${opportunityId}/drafts`, { kind }),
   updateDraft: (id: string, body: { subject?: string | null; body?: string }) => request<Draft>('PATCH', `/drafts/${id}`, body),
-  professors: () => request<Professor[]>('GET', '/professors'),
+  professors: (limit = 50) => request<Professor[]>('GET', `/professors?limit=${limit}`),
   professor: (id: string) => request<Professor>('GET', `/professors/${id}`),
   jobs: () => request<Job[]>('GET', '/research-jobs'),
   job: (id: string) => request<Job>('GET', `/research-jobs/${id}`),

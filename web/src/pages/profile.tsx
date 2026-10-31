@@ -61,7 +61,7 @@ export function ProfilePage() {
 
   return (
     <form className="space-y-6 pb-24" onSubmit={(e) => { e.preventDefault(); save.mutate() }}>
-      <PageHeader title="Profile" description="Used for matching, eligibility checks and drafts. Only facts here are used about you." />
+      <PageHeader title="Academic Profile" description="Used for matching, eligibility checks and drafts. Only facts here are used about you." />
 
       <Section title="Basics">
         <div className="grid gap-4 sm:grid-cols-2">

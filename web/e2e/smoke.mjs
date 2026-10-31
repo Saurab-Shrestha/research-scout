@@ -23,8 +23,8 @@ page.on('console', (m) => m.type() === 'error' && errors.push(m.text()))
 const step = (name) => console.log(`✓ ${name}`)
 
 try {
-  for (const [path, heading] of [['/', /Good (morning|afternoon|evening)/], ['/opportunities', 'Opportunities'], ['/tracker', 'Tracker'],
-    ['/drafts', 'Draft studio'], ['/discover', 'Discover'], ['/profile', 'Profile']]) {
+  for (const [path, heading] of [['/', /Good (morning|afternoon|evening)/], ['/opportunities', 'Discover Opportunities'], ['/shortlist', 'My Shortlist'], ['/tracker', 'Application Tracker'],
+    ['/drafts', 'Writing Studio'], ['/researchers', 'Researchers'], ['/discover', 'Find Researchers'], ['/profile', 'Academic Profile'], ['/settings', 'Settings']]) {
     await page.goto(WEB + path)
     await page.getByRole('heading', { level: 1, name: heading }).waitFor()
   }
