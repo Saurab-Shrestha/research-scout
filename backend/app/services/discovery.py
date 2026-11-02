@@ -95,8 +95,10 @@ def known_keys(db: Session) -> set:
 
 
 def select_candidates(authors: list[dict], topic_counts: dict[str, int], countries: list[str],
-                      current_year: int, max_results: int, known: set = frozenset()) -> tuple[list[Candidate], list[dict]]:
-    """`known` (from known_keys) skips researchers already saved, so max_results counts only new ones."""
+                      current_year: int, max_results: int, known: set = frozenset(),
+                      institution_ids: set[str] = frozenset()) -> tuple[list[Candidate], list[dict]]:
+    """`known` (from known_keys) skips researchers already saved, so max_results counts only new ones.
+    `institution_ids` keeps only researchers whose current university is one of these (co-authors elsewhere drop out)."""
     kept, skipped = [], []
     for a in authors:
         author_id = openalex.short_id(a["id"])
@@ -109,6 +111,9 @@ def select_candidates(authors: list[dict], topic_counts: dict[str, int], countri
         inst, note = primary_institution(a, countries, current_year)
         if inst is None:
             skipped.append({"name": a["display_name"], "reason": note})
+            continue
+        if institution_ids and openalex.short_id(inst["id"]) not in institution_ids:
+            skipped.append({"name": a["display_name"], "reason": f"based at {inst['display_name']}"})
             continue
         if (publications._name_key(a["display_name"]), openalex.short_id(inst["id"])) in known:
             skipped.append({"name": a["display_name"], "reason": "already in your list (another OpenAlex profile)"})

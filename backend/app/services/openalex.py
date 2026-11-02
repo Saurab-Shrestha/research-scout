@@ -141,11 +141,27 @@ def search_topics(query: str, limit: int = 3) -> list[dict]:
             for t in _get("/topics", {"search": query, "per_page": limit})["results"]]
 
 
-def top_authors_for_topics(topic_ids: list[str], countries: list[str], from_year: int, limit: int = 200) -> list[dict]:
-    """Authors with the most recent works in these topics at institutions in these countries."""
+def search_institutions(query: str, countries: list[str], limit: int = 8) -> list[dict]:
+    """Universities matching a name, limited to the countries discovery supports."""
+    data = _get("/institutions", {"search": query, "per_page": limit,
+                                  "filter": f"type:education,country_code:{'|'.join(countries)}"})
+    return [{"id": short_id(i["id"]), "name": i["display_name"], "country": i.get("country_code"),
+             "city": (i.get("geo") or {}).get("city")} for i in data["results"]]
+
+
+def get_institution(institution_id: str) -> dict:
+    inst = _get(f"/institutions/{institution_id}", {"select": "id,display_name,country_code"})
+    return {"id": short_id(inst["id"]), "name": inst["display_name"], "country": inst.get("country_code")}
+
+
+def top_authors_for_topics(topic_ids: list[str], countries: list[str], from_year: int, limit: int = 200,
+                           institution_ids: list[str] | None = None) -> list[dict]:
+    """Authors with the most recent works in these topics at institutions in these countries
+    (or at these institutions, when given)."""
+    where = (f"institutions.id:{'|'.join(institution_ids)}" if institution_ids
+             else f"institutions.country_code:{'|'.join(countries)}")
     data = _get("/works", {
-        "filter": f"topics.id:{'|'.join(topic_ids)},institutions.country_code:{'|'.join(countries)},"
-                  f"from_publication_date:{from_year}-01-01",
+        "filter": f"topics.id:{'|'.join(topic_ids)},{where},from_publication_date:{from_year}-01-01",
         "group_by": "authorships.author.id",
         "per_page": min(limit, 200),
     })

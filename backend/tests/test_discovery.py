@@ -62,8 +62,11 @@ def test_topic_queries_expand_areas_and_dedupe():
 def fake_openalex(monkeypatch):
     calls = {"works": 0}
     monkeypatch.setattr(openalex, "search_topics", lambda q, limit: [{"id": "T10682", "name": "Quantum Computing"}])
-    monkeypatch.setattr(openalex, "top_authors_for_topics", lambda topics, countries, from_year, limit: [
-        {"id": "A1", "name": "Prof One", "topic_works": 40}, {"id": "A2", "name": "Prof Two", "topic_works": 20}])
+
+    def top_authors(topics, countries, from_year, limit, institution_ids=None):
+        calls["institution_ids"] = institution_ids
+        return [{"id": "A1", "name": "Prof One", "topic_works": 40}, {"id": "A2", "name": "Prof Two", "topic_works": 20}]
+    monkeypatch.setattr(openalex, "top_authors_for_topics", top_authors)
     monkeypatch.setattr(openalex, "get_authors", lambda ids: [
         author_raw("A1", "Prof One", [{"institution": UOFT, "years": [2025]}]),
         author_raw("A2", "Prof Two", [{"institution": LSU, "years": [2026]}]),
@@ -231,3 +234,22 @@ def test_planner_choosing_nothing_falls_back(monkeypatch):
     fake_planner(monkeypatch, selected=["T999"])
     chosen, method = discovery.choose_topics(["quantum_computing"], None, CANDIDATES)
     assert [c["id"] for c in chosen] == ["T1", "T3"] and "nothing" in method
+
+
+def test_university_search_keeps_only_researchers_based_there(client, fake_openalex):
+    job = make_job(institutions=[{"id": "I2", "name": "University of Toronto", "country": "CA"}])
+    run_job(build_graph(InMemorySaver()), job.id)
+    assert fake_openalex["institution_ids"] == ["I2"]
+    assert [p["name"] for p in client.get("/api/v1/professors").json()] == ["Prof One"]  # Prof Two is at LSU
+
+
+def test_university_search_endpoint_and_countries_follow_universities(client, monkeypatch):
+    monkeypatch.setattr(openalex, "search_institutions", lambda q, countries: [
+        {"id": "I2", "name": "University of Toronto", "country": "CA", "city": "Toronto"},
+        {"id": "I7", "name": "Somewhere Else", "country": "BR", "city": None}])
+    assert [i["id"] for i in client.get("/api/v1/research-jobs/institutions?q=toronto").json()] == ["I2"]
+    job = client.post("/api/v1/research-jobs", json={"research_areas": ["quantum_computing"], "countries": ["US"],
+                                                     "institutions": [{"id": "I2", "name": "UofT", "country": "CA"}]}).json()
+    assert job["input"]["countries"] == ["CA"]
+    bad = client.post("/api/v1/research-jobs", json={"research_areas": ["x"], "institutions": [{"id": "x", "name": "n", "country": "CA"}]})
+    assert bad.status_code == 422

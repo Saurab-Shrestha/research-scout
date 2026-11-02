@@ -2,17 +2,24 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Response
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.countries import CountryCode
+from app.core.countries import COUNTRIES, CountryCode
 from app.db.models import JobEvent, ResearchJob
 from app.db.session import get_db
+from app.services import openalex
 from app.schemas.profile import DegreeType
 
 router = APIRouter(prefix="/research-jobs", tags=["research-jobs"])
+
+
+class Institution(BaseModel):
+    id: str = Field(pattern=r"^I\d+$")  # OpenAlex institution ID, from GET /research-jobs/institutions
+    name: str
+    country: CountryCode
 
 
 class DiscoveryRequest(BaseModel):
@@ -24,8 +31,15 @@ class DiscoveryRequest(BaseModel):
     funding_priority: Literal["full_funding", "any"] = "full_funding"
     seed_urls: list[str] = []
     max_results: int = Field(30, ge=1, le=100)
-    find_pages: bool = True  # search for and verify faculty pages (Gemini + Google Search)
+    find_pages: bool = True  # search for and verify faculty pages (needs a provider with web search)
+    institutions: list[Institution] = Field([], max_length=10)  # only these universities; countries come from them
     refresh: bool = False  # also return researchers already saved and refresh their papers; default skips them
+
+    @model_validator(mode="after")
+    def _countries_from_institutions(self):
+        if self.institutions:
+            self.countries = list(dict.fromkeys(i.country for i in self.institutions))
+        return self
 
 
 class JobOut(BaseModel):
@@ -54,6 +68,16 @@ def _job_out(j: ResearchJob) -> JobOut:
     return JobOut(id=str(j.id), job_type=j.job_type, status=j.status, input=j.input_json, result=j.result_json,
                   error_message=j.error_message, attempts=j.attempts, tokens_used=j.tokens_used, cost_usd=j.cost_usd, created_at=j.created_at,
                   completed_at=j.completed_at)
+
+
+@router.get("/institutions")
+def search_institutions(q: str = Query(min_length=2)) -> list[Institution]:
+    """Universities by name, in the countries discovery supports."""
+    try:
+        found = openalex.search_institutions(q, list(COUNTRIES))
+    except openalex.ScholarlyError as e:
+        raise HTTPException(502, str(e))
+    return [Institution(**i) for i in found if i["country"] in COUNTRIES]
 
 
 @router.post("", response_model=JobOut, status_code=202)

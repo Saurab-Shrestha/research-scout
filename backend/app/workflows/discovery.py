@@ -28,6 +28,7 @@ class DiscoveryState(TypedDict):
     max_results: int
     find_pages: NotRequired[bool]
     refresh: NotRequired[bool]  # include researchers already saved and re-link their recent papers
+    institutions: NotRequired[list[dict]]  # [{id, name, country}]: only researchers at these universities
     topic_ids: NotRequired[list[str]]
     author_counts: NotRequired[dict[str, int]]
     professor_ids: NotRequired[list[str]]
@@ -63,7 +64,8 @@ def discover_authors(state: DiscoveryState) -> dict:
     from_year = datetime.now(UTC).year - ACTIVE_YEARS
     # Without refresh, saved researchers are skipped later, so fetch the full pool to leave room for new ones.
     limit = min(200, state["max_results"] * 5) if state.get("refresh") else 200
-    authors = openalex.top_authors_for_topics(state["topic_ids"], state["countries"], from_year, limit=limit)
+    authors = openalex.top_authors_for_topics(state["topic_ids"], state["countries"], from_year, limit=limit,
+                                              institution_ids=[i["id"] for i in state.get("institutions", [])])
     emit(state["job_id"], "authors", f"Found {len(authors)} active authors since {from_year}")
     return {"author_counts": {a["id"]: a["topic_works"] for a in authors}}
 
@@ -76,6 +78,7 @@ def persist_candidates(state: DiscoveryState) -> dict:
         known = set() if state.get("refresh") else discovery.known_keys(db)
         kept, skipped = discovery.select_candidates(
             authors, counts, state["countries"], datetime.now(UTC).year, state["max_results"], known,
+            {i["id"] for i in state.get("institutions", [])},
         )
         for c in kept:
             prof_id, created = discovery.upsert_candidate(db, c)

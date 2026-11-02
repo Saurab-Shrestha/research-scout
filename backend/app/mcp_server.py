@@ -176,17 +176,39 @@ def find_faculty_page(professor_id: str) -> dict[str, Any]:
     return {"status": o.status, "faculty_url": o.faculty_url, "attempts": o.attempts}
 
 
+@server.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=True))
+def search_universities(name: str) -> list[dict[str, Any]]:
+    """Find universities by name (in the countries discovery supports) to pass as start_discovery university_ids."""
+    try:
+        return [i.model_dump() for i in jobs_api.search_institutions(name)]
+    except jobs_api.HTTPException as e:
+        raise ToolError(e.detail)
+
+
 @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=True))
 def start_discovery(research_areas: list[str], query: str | None = None, countries: list[CountryCode] = ["US", "CA"],
-                    max_results: int = 30, find_pages: bool = True, refresh: bool = False) -> dict[str, Any]:
+                    max_results: int = 30, find_pages: bool = True, refresh: bool = False,
+                    university_ids: list[str] | None = None) -> dict[str, Any]:
     """Queue a background discovery job (a worker must be running). Poll with get_discovery_job.
 
     research_areas: any of machine_learning, artificial_intelligence, quantum_computing, or free text.
     countries: ISO codes from US, CA, GB, IE, DE, NL, CH, AT, BE, DK, FI, NO, SE, FR, ES, IT, PT, AU, NZ, JP, KR.
     Researchers already saved are skipped, so max_results counts new ones; refresh=True includes them and re-links their papers.
+    university_ids: OpenAlex IDs from search_universities; limits the search to researchers currently at those
+    universities (countries are then taken from them).
     """
-    body = jobs_api.DiscoveryRequest(research_areas=research_areas, query=query, countries=countries,
-                                     max_results=max_results, find_pages=find_pages, refresh=refresh)
+    institutions = []
+    for uid in university_ids or []:
+        try:
+            institutions.append(openalex.get_institution(uid))
+        except openalex.ScholarlyError as e:
+            raise ToolError(f"unknown university {uid}: {e}")
+    try:
+        body = jobs_api.DiscoveryRequest(research_areas=research_areas, query=query, countries=countries,
+                                         max_results=max_results, find_pages=find_pages, refresh=refresh,
+                                         institutions=institutions)
+    except ValueError as e:
+        raise ToolError(str(e))
     if not body.research_areas and not body.query:
         raise ToolError("provide research_areas or a query")
     with SessionLocal() as db:

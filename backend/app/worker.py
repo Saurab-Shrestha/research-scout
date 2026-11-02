@@ -33,6 +33,7 @@ def initial_state(job: ResearchJob) -> dict:
         "max_results": data.get("max_results", 30),
         "find_pages": data.get("find_pages", True),
         "refresh": bool(data.get("refresh")),
+        "institutions": data.get("institutions") or [],
     }
 
 

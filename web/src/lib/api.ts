@@ -113,6 +113,8 @@ export interface Profile {
   target_countries: string[]
 }
 
+export interface Institution { id: string; name: string; country: string; city?: string | null }
+
 export type LlmProvider = 'gemini' | 'openai' | 'anthropic' | 'openai_compatible'
 export type EmbeddingProvider = Exclude<LlmProvider, 'anthropic'>
 export interface LlmSettings {
@@ -166,7 +168,8 @@ export const api = {
   jobs: () => request<Job[]>('GET', '/research-jobs'),
   job: (id: string) => request<Job>('GET', `/research-jobs/${id}`),
   jobEvents: (id: string) => request<JobEvent[]>('GET', `/research-jobs/${id}/events`),
-  startDiscovery: (body: { query?: string | null; research_areas: string[]; countries: string[]; max_results: number; find_pages: boolean; refresh?: boolean }) =>
+  institutions: (q: string) => request<Institution[]>('GET', `/research-jobs/institutions?q=${encodeURIComponent(q)}`),
+  startDiscovery: (body: { query?: string | null; research_areas: string[]; countries: string[]; institutions?: Institution[]; max_results: number; find_pages: boolean; refresh?: boolean }) =>
     request<Job>('POST', '/research-jobs', body),
   ingest: (body: { url?: string | null; text?: string | null; source_type?: 'web_page' | 'social_post' }) =>
     request<{ source_id: string; canonical_url: string; created: boolean }>('POST', '/sources/ingest', body),

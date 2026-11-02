@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, ChevronDown, Compass, Link2, Loader2, Microscope, Scale, Search } from 'lucide-react'
-import { useState } from 'react'
+import { Building2, Check, ChevronDown, Compass, Link2, Loader2, Microscope, Scale, Search, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { CountryPicker } from '@/components/app/country-picker'
@@ -13,8 +13,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
-import { api, type Degree, type Job } from '@/lib/api'
-import { countryList, DEGREE, timeAgo } from '@/lib/format'
+import { api, type Degree, type Institution, type Job } from '@/lib/api'
+import { COUNTRY, countryList, DEGREE, timeAgo } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 // The research pipeline behind the Researchers page: add researchers, evaluate their programs, watch the jobs.
@@ -67,18 +67,66 @@ export function PipelineSteps() {
   )
 }
 
+/** Search OpenAlex universities by name and collect up to ten. */
+function UniversityPicker({ value, onChange }: { value: Institution[]; onChange: (v: Institution[]) => void }) {
+  const [text, setText] = useState('')
+  const [q, setQ] = useState('')
+  useEffect(() => { const t = setTimeout(() => setQ(text.trim()), 300); return () => clearTimeout(t) }, [text])
+  const results = useQuery({ queryKey: ['institutions', q], queryFn: () => api.institutions(q), enabled: q.length >= 2, staleTime: 5 * 60_000 })
+  const options = (results.data ?? []).filter((i) => !value.some((v) => v.id === i.id))
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="uni-search">Universities</Label>
+      {value.length > 0 && (
+        <ul className="flex flex-wrap gap-1.5" aria-label="Selected universities">
+          {value.map((u) => (
+            <li key={u.id} className="inline-flex items-center gap-1 rounded-lg border border-navy bg-navy py-1 pr-1 pl-2.5 text-sm text-navy-ink">
+              {u.name}<span className="opacity-70">· {COUNTRY[u.country] ?? u.country}</span>
+              <button type="button" aria-label={`Remove ${u.name}`} onClick={() => onChange(value.filter((v) => v.id !== u.id))}
+                className="rounded p-0.5 hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-ring"><X className="size-3.5" /></button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="relative">
+        <Building2 aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input id="uni-search" className="pl-9" value={text} onChange={(e) => setText(e.target.value)} disabled={value.length >= 10}
+          placeholder={value.length >= 10 ? 'Up to 10 universities' : 'Type a university name, e.g. University of Toronto or KAIST'} autoComplete="off" />
+      </div>
+      {q.length >= 2 && (
+        <div className="rounded-lg border border-border bg-sheet p-1" aria-live="polite">
+          {results.isFetching ? <p className="px-2.5 py-1.5 text-sm text-muted-foreground">Searching…</p>
+            : results.isError ? <p className="px-2.5 py-1.5 text-sm text-error">{results.error.message}</p>
+              : options.length === 0 ? <p className="px-2.5 py-1.5 text-sm text-muted-foreground">No universities found in the supported countries.</p>
+                : options.map((i) => (
+                  <button key={i.id} type="button" onClick={() => { onChange([...value, i]); setText(''); setQ('') }}
+                    className="flex w-full items-baseline justify-between gap-3 rounded-md px-2.5 py-1.5 text-left text-sm hover:bg-well focus-visible:outline-2 focus-visible:outline-ring">
+                    <span className="font-medium text-foreground">{i.name}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground">{[i.city, COUNTRY[i.country] ?? i.country].filter(Boolean).join(', ')}</span>
+                  </button>
+                ))}
+        </div>
+      )}
+      <p className="text-xs text-muted-foreground">Only researchers whose current university is one of these are kept.</p>
+    </div>
+  )
+}
+
 function ByArea() {
   const profile = useQuery({ queryKey: ['profile'], queryFn: api.profile, retry: false })
   const [edited, setAreas] = useState<string[] | null>(null)
   const areas = edited ?? profile.data?.research_interests ?? []  // your profile's interests until you edit them
   const [editedCountries, setCountries] = useState<string[] | null>(null)
   const countries = editedCountries ?? profile.data?.target_countries ?? ['US', 'CA']  // the profile's study plan until edited
+  const [where, setWhere] = useState<'countries' | 'universities'>('countries')
+  const [universities, setUniversities] = useState<Institution[]>([])
+  const byUni = where === 'universities'
   const [max, setMax] = useState(20)
   const [findPages, setFindPages] = useState(true)
   const [refresh, setRefresh] = useState(false)
   const started = useStarted()
   const discover = useMutation({
-    mutationFn: () => api.startDiscovery({ research_areas: areas, countries, max_results: max, find_pages: findPages, refresh }),
+    mutationFn: () => api.startDiscovery({ research_areas: areas, countries, institutions: byUni ? universities : [], max_results: max, find_pages: findPages, refresh }),
     onSuccess: () => started('Discovery started'),
     onError: (e) => toast.error('Couldn’t start discovery', { description: e.message }),
   })
@@ -89,7 +137,15 @@ function ByArea() {
         <TagInput id="areas" value={areas} onChange={setAreas} placeholder="Add an area and press Enter" />
         <p className="text-xs text-muted-foreground">Searches OpenAlex for researchers actively publishing in these areas, then verifies their faculty pages.</p>
       </div>
-      <CountryPicker value={countries} onChange={setCountries} />
+      <div className="space-y-3">
+        <div role="group" aria-label="Where to search" className="inline-flex rounded-lg bg-well p-0.5 text-sm">
+          {([['countries', 'By country'], ['universities', 'Specific universities']] as const).map(([m, label]) => (
+            <button key={m} type="button" aria-pressed={where === m} onClick={() => setWhere(m)}
+              className={cn('rounded-md px-2.5 py-1 font-medium', where === m ? 'bg-sheet text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground')}>{label}</button>
+          ))}
+        </div>
+        {byUni ? <UniversityPicker value={universities} onChange={setUniversities} /> : <CountryPicker value={countries} onChange={setCountries} />}
+      </div>
       <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
         <div className="w-32 space-y-1.5">
           <Label htmlFor="max">Max researchers</Label>
@@ -99,7 +155,7 @@ function ByArea() {
         <label className="flex h-9 items-center gap-2 text-sm" title="Off: researchers already in your list are skipped, so the max counts only new ones">
           <Checkbox checked={refresh} onCheckedChange={(c) => setRefresh(!!c)} />Include ones I already have (refresh their papers)
         </label>
-        <Button type="submit" className="ml-auto" disabled={discover.isPending || areas.length === 0 || countries.length === 0}>
+        <Button type="submit" className="ml-auto" disabled={discover.isPending || areas.length === 0 || (byUni ? universities.length === 0 : countries.length === 0)}>
           {discover.isPending ? <Loader2 className="animate-spin" /> : <Compass />}Start discovery
         </Button>
       </div>
@@ -226,7 +282,7 @@ function JobRow({ job, expanded, onToggle }: { job: Job; expanded: boolean; onTo
   const label = isEval ? 'Evaluate programs' : `Discover: ${((job.input.research_areas as string[] | undefined)?.join(', ') || (job.input.query as string) || 'researchers').replace(/_/g, ' ')}`
   const detail = isEval
     ? `${(job.input.degree_types as string[] | undefined)?.map((d) => DEGREE[d as Degree] ?? d).join(', ') ?? ''}`
-    : `${countryList((job.input.countries as string[] | undefined) ?? [])} · up to ${job.input.max_results ?? '?'}`
+    : `${(job.input.institutions as Institution[] | undefined)?.length ? (job.input.institutions as Institution[]).map((i) => i.name).join(', ') : countryList((job.input.countries as string[] | undefined) ?? [])} · up to ${job.input.max_results ?? '?'}`
   const st = STATUS[job.status as keyof typeof STATUS] ?? { label: job.status, tone: 'neutral' as const }
   return (
     <li>
