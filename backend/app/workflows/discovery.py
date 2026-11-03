@@ -5,9 +5,12 @@ Every write is idempotent, so a node re-run after a crash is safe.
 """
 
 from datetime import UTC, datetime
+import uuid
+from concurrent.futures import ThreadPoolExecutor
 from typing import NotRequired, TypedDict
 
 from langgraph.graph import END, START, StateGraph
+from sqlalchemy import select
 
 from app.core.countries import COUNTRIES
 from app.db.models import Professor, ProfessorPublication
@@ -18,6 +21,7 @@ from app.services.jobs import emit
 ALLOWED_COUNTRIES = set(COUNTRIES)
 TOPIC_CANDIDATES_PER_QUERY = 5  # the planner picks from these; taking them all drifted into adjacent fields
 ACTIVE_YEARS = 3
+PARALLEL_PAGES = 5  # ponytail: fixed pool, like evaluation's; lower it if the provider starts returning 429s
 
 
 class DiscoveryState(TypedDict):
@@ -109,23 +113,37 @@ def enrich_publications(state: DiscoveryState) -> dict:
     return {"errors": errors}
 
 
-def find_faculty_pages(state: DiscoveryState) -> dict:
-    """Attach verified faculty pages to professors that have none. Re-runs skip ones already found."""
-    pages, errors = {}, list(state.get("errors", []))
+def _find_page(job_id: str, prof_id: str) -> tuple[str, str | None, dict | None]:
+    """One professor in its own session. Returns (professor_id, status, error)."""
     with SessionLocal() as db:
-        for prof_id in state["professor_ids"]:
-            professor = db.get(Professor, prof_id)
-            if professor.faculty_url:
-                pages[prof_id] = "existing"
-                continue
-            try:
-                outcome = page_finder.find_faculty_page(db, professor.id)
-            except llm.LLMError as e:
-                errors.append({"professor_id": prof_id, "error": str(e)})
-                continue
-            pages[prof_id] = outcome.status
-            emit(state["job_id"], "page", f"{professor.name}: {outcome.status}",
-                 url=outcome.faculty_url, attempts=outcome.attempts)
+        professor = db.get(Professor, prof_id)
+        if professor.faculty_url:
+            return prof_id, "existing", None
+        try:
+            outcome = page_finder.find_faculty_page(db, professor.id)
+        except llm.LLMError as e:
+            return prof_id, None, {"professor_id": prof_id, "error": str(e)}
+        emit(job_id, "page", f"{professor.name}: {outcome.status}", url=outcome.faculty_url, attempts=outcome.attempts)
+        return prof_id, outcome.status, None
+
+
+def find_faculty_pages(state: DiscoveryState) -> dict:
+    """Attach verified faculty pages to professors that have none, several at once. Re-runs skip ones already found."""
+    # Colleagues at one university run in order (they share department rows); universities run in parallel.
+    with SessionLocal() as db:
+        universities = dict(db.execute(select(Professor.id, Professor.university_id)
+                                       .where(Professor.id.in_(state["professor_ids"]))).all())
+    groups: dict = {}
+    for prof_id in state["professor_ids"]:
+        groups.setdefault(universities.get(uuid.UUID(prof_id)), []).append(prof_id)
+    pages, errors = {}, list(state.get("errors", []))
+    with ThreadPoolExecutor(PARALLEL_PAGES) as pool:
+        results = pool.map(lambda ids: [_find_page(state["job_id"], p) for p in ids], groups.values())
+        for prof_id, status, error in (r for group in results for r in group):
+            if error:
+                errors.append(error)
+            else:
+                pages[prof_id] = status
     found = sum(v != "not_found" for v in pages.values())
     emit(state["job_id"], "pages", f"Faculty pages verified for {found}/{len(pages)} professors")
     return {"pages": pages, "errors": errors}

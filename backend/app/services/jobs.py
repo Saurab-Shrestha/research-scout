@@ -34,9 +34,13 @@ def claim_next(db: Session) -> uuid.UUID | None:
 
 
 def emit(job_id: str | uuid.UUID, event_type: str, message: str, **metadata) -> None:
+    """Record a progress event. Doubles as the heartbeat: a job that keeps emitting is never treated as stale,
+    so a second worker can't claim a long job that is still running."""
     with SessionLocal() as db:
         db.add(JobEvent(research_job_id=uuid.UUID(str(job_id)), event_type=event_type,
                         message=message, metadata_json=metadata))
+        db.execute(text("UPDATE research_jobs SET locked_at = now() WHERE id = :id AND status = 'running'"),
+                   {"id": uuid.UUID(str(job_id))})
         db.commit()
 
 

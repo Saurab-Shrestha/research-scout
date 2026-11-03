@@ -253,3 +253,14 @@ def test_university_search_endpoint_and_countries_follow_universities(client, mo
     assert job["input"]["countries"] == ["CA"]
     bad = client.post("/api/v1/research-jobs", json={"research_areas": ["x"], "institutions": [{"id": "x", "name": "n", "country": "CA"}]})
     assert bad.status_code == 422
+
+
+def test_progress_events_keep_a_long_job_from_being_reclaimed():
+    from datetime import UTC, datetime, timedelta
+    job = make_job()
+    with SessionLocal() as db:
+        db.get(ResearchJob, job.id).locked_at = datetime.now(UTC) - timedelta(minutes=jobs.STALE_AFTER_MINUTES + 5)
+        db.commit()
+    jobs.emit(job.id, "page", "still working")
+    with SessionLocal() as db:
+        assert jobs.claim_next(db) is None  # the heartbeat made it fresh again

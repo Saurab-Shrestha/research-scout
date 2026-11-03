@@ -45,6 +45,12 @@ def test_follows_safe_redirect():
     assert fetch_public_page("https://uni.example.edu/old", client, resolve).final_url == "https://uni.example.edu/new"
 
 
+def test_redirect_without_location_is_a_fetch_error():
+    client = make_client({"https://uni.example.edu/x": httpx.Response(302)})
+    with pytest.raises(FetchError, match="Location"):
+        fetch_public_page("https://uni.example.edu/x", client, resolve)
+
+
 def test_revalidates_redirect_target():
     client = make_client({
         "https://uni.example.edu/x": httpx.Response(302, headers={"location": "http://evil.example.com/admin"}),

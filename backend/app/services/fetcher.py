@@ -61,6 +61,8 @@ def fetch_public_page(url: str, client: httpx.Client | None = None, resolve=sock
                 raise FetchError(f"disallowed by robots.txt: {current}")
             with client.stream("GET", current, follow_redirects=False) as r:
                 if r.is_redirect:
+                    if not r.headers.get("location"):
+                        raise FetchError(f"HTTP {r.status_code} redirect without a Location header: {current}")
                     current = urljoin(current, r.headers["location"])
                     continue
                 if r.status_code >= 400:
